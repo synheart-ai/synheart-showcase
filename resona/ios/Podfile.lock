@@ -1,0 +1,75 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_secure_storage (6.0.0):
+    - Flutter
+  - health (13.3.1):
+    - Flutter
+  - onnxruntime-c (1.28.0)
+  - synheart_auth (0.1.8):
+    - Flutter
+    - SynheartAuth
+  - synheart_behavior (0.3.0):
+    - Flutter
+  - synheart_core (0.13.0):
+    - Flutter
+    - onnxruntime-c (>= 1.20.0)
+  - synheart_session (0.2.0):
+    - Flutter
+  - synheart_wear (0.4.1):
+    - Flutter
+  - SynheartAuth (0.1.0)
+  - syni (0.3.6):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - health (from `.symlinks/plugins/health/ios`)
+  - synheart_auth (from `.symlinks/plugins/synheart_auth/ios`)
+  - synheart_behavior (from `.symlinks/plugins/synheart_behavior/ios`)
+  - synheart_core (from `.symlinks/plugins/synheart_core/ios`)
+  - synheart_session (from `.symlinks/plugins/synheart_session/ios`)
+  - synheart_wear (from `.symlinks/plugins/synheart_wear/ios`)
+  - syni (from `.symlinks/plugins/syni/ios`)
+
+SPEC REPOS:
+  trunk:
+    - onnxruntime-c
+    - SynheartAuth
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  health:
+    :path: ".symlinks/plugins/health/ios"
+  synheart_auth:
+    :path: ".symlinks/plugins/synheart_auth/ios"
+  synheart_behavior:
+    :path: ".symlinks/plugins/synheart_behavior/ios"
+  synheart_core:
+    :path: ".symlinks/plugins/synheart_core/ios"
+  synheart_session:
+    :path: ".symlinks/plugins/synheart_session/ios"
+  synheart_wear:
+    :path: ".symlinks/plugins/synheart_wear/ios"
+  syni:
+    :path: ".symlinks/plugins/syni/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  health: 4decf5d74e8f54c58a8c07a385fc72f629a831d9
+  onnxruntime-c: 1cf87aaca94f53ab33bb9729104ec0a5b88291e9
+  synheart_auth: f3eaa62dc7f1aaffdcc61da0ce8172275bf2460f
+  synheart_behavior: 7671be37999a5f2824ecb0abc3eb0963666077f2
+  synheart_core: e0febbd4d0825af75bf1a3ebec18502e46ef1efe
+  synheart_session: 5dad2cb9aad3c2772d6fadc7aa3767bd97404983
+  synheart_wear: 144b9f09a2e83f85c930d0580b89d0738ba34d30
+  SynheartAuth: 1f281c095bd9753fd835ad1d7a2d9ec631e94a76
+  syni: feaa8c8592841d3fe7efecd4ef988a3d7e6c03bf
+
+PODFILE CHECKSUM: 75096e49d58c912da20488b46186e69bfea2e05e
+
+COCOAPODS: 1.16.2
