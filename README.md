@@ -49,7 +49,7 @@ Resona demonstrates:
 - Background audio and iOS Live Activities
 - A privacy-first interface that avoids exposing raw physiological data
 
-See the [Resona guide](resona/README.md) for architecture, setup, wearable support, and development instructions. A step-by-step [tutorial script](resona/docs/synheart-flutter-tutorial-video-script.md) walks through the same integration from scratch.
+See the [Resona guide](resona/README.md) for architecture, setup, wearable support, and development instructions.
 
 *More showcases are on the way. If you build something on HSI, we would like to see it.*
 

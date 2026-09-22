@@ -107,7 +107,17 @@ The installed binaries live under `synheart/vendor/` and are intentionally exclu
 synheart sync
 ```
 
-### 3. Run the app
+### 3. Set your iOS signing team
+
+The Xcode project does not carry a development team. For iOS builds, set your own
+in Xcode under **Signing & Capabilities**, or export it before running the Live
+Activity tool:
+
+```bash
+export DEVELOPMENT_TEAM=YOURTEAMID
+```
+
+### 4. Run the app
 
 List available devices:
 
@@ -176,7 +186,6 @@ resona/
 │   ├── music_art/           Local album artwork
 │   └── states/              State character artwork
 ├── cloudflare/media-worker/ Range-aware media service
-├── docs/                    Tutorial and recording material
 ├── ios/
 │   ├── ResonaLiveActivity/  Live Activity widget extension
 │   └── Runner/              iOS host integration
