@@ -25,12 +25,13 @@ Around that specification, Synheart provides SDKs that collect consented signals
 | Layer | What it provides | SDKs |
 | --- | --- | --- |
 | **Specification** | Schema, RFCs, and test vectors for human-state signals | [`hsi`](https://github.com/synheart-ai/hsi) |
-| **Core** | Biosignals, behavior, and on-device state computation | [Flutter](https://github.com/synheart-ai/synheart-core-flutter) · [Swift](https://github.com/synheart-ai/synheart-core-swift) · [Kotlin](https://github.com/synheart-ai/synheart-core-kotlin) · [Wear OS](https://github.com/synheart-ai/synheart-core-kotlin-edge) |
-| **Wearables** | HealthKit, Health Connect, WHOOP, Garmin, Oura, Fitbit | [Flutter](https://github.com/synheart-ai/synheart-wear-flutter) |
-| **Behavior** | Typing, motion, gestures, attention — privacy-preserving | [Flutter](https://github.com/synheart-ai/synheart-behavior-flutter) · [Kotlin](https://github.com/synheart-ai/synheart-behavior-kotlin) |
-| **Sessions** | Biosignal session lifecycle with pluggable providers | [Kotlin](https://github.com/synheart-ai/synheart-session-kotlin) |
-| **Auth** | Secure Enclave / Keystore-backed ECDSA P-256 request signing | [Flutter](https://github.com/synheart-ai/synheart-auth-flutter) · [Kotlin](https://github.com/synheart-ai/synheart-auth-kotlin) |
-| **Syni** | Persona-driven, on-device adaptive agent running on HSI | [Concepts](https://github.com/synheart-ai/syni) · [Flutter](https://github.com/synheart-ai/syni-flutter) · [Kotlin](https://github.com/synheart-ai/syni-kotlin) |
+| **Core** | Biosignals, behavior, and on-device state computation | [Flutter](https://github.com/synheart-ai/synheart-core-flutter) · [Swift](https://github.com/synheart-ai/synheart-core-swift) · [Kotlin](https://github.com/synheart-ai/synheart-core-kotlin) |
+| **Core (watch)** | Lightweight on-device sessions with phone relay | [watchOS](https://github.com/synheart-ai/synheart-core-swift-edge) · [Wear OS](https://github.com/synheart-ai/synheart-core-kotlin-edge) |
+| **Wearables** | HealthKit, Health Connect, WHOOP, Garmin, Oura, Fitbit | [Flutter](https://github.com/synheart-ai/synheart-wear-flutter) · [Swift](https://github.com/synheart-ai/synheart-wear-swift) · [Kotlin](https://github.com/synheart-ai/synheart-wear-kotlin) |
+| **Behavior** | Typing, motion, gestures, attention — privacy-preserving | [Flutter](https://github.com/synheart-ai/synheart-behavior-flutter) · [Swift](https://github.com/synheart-ai/synheart-behavior-swift) · [Kotlin](https://github.com/synheart-ai/synheart-behavior-kotlin) |
+| **Sessions** | Biosignal session lifecycle with pluggable providers | [Flutter](https://github.com/synheart-ai/synheart-session-flutter) · [Swift](https://github.com/synheart-ai/synheart-session-swift) · [Kotlin](https://github.com/synheart-ai/synheart-session-kotlin) |
+| **Auth** | Secure Enclave / Keystore-backed ECDSA P-256 request signing | [Flutter](https://github.com/synheart-ai/synheart-auth-flutter) · [Swift](https://github.com/synheart-ai/synheart-auth-swift) · [Kotlin](https://github.com/synheart-ai/synheart-auth-kotlin) |
+| **Syni** | Persona-driven, on-device adaptive agent running on HSI | [Concepts](https://github.com/synheart-ai/syni) · [Flutter](https://github.com/synheart-ai/syni-flutter) · [Swift](https://github.com/synheart-ai/syni-swift) · [Kotlin](https://github.com/synheart-ai/syni-kotlin) |
 
 ## Showcases
 
@@ -67,7 +68,7 @@ Each showcase is self-contained and has its own dependencies and setup guide. Pr
 The shortest path from zero to an HSI-aware application:
 
 1. **Read the spec.** Start with [`hsi`](https://github.com/synheart-ai/hsi) to understand states, axes, confidence, and time-window semantics.
-2. **Pick a Core SDK** for your platform from the table above, and add a signal source (wearable or behavior).
+2. **Pick a Core SDK** for your platform — Flutter, Swift, and Kotlin are all first-class, and add a signal source (wearable or behavior).
 3. **Install the runtime.** State computation happens in the native Synheart Runtime, provisioned with the Synheart CLI:
    ```bash
    curl -fsSL https://synheart.sh/install | sh
