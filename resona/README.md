@@ -2,6 +2,10 @@
 
 **Music that understands the moment.**
 
+[![Watch the Resona demo](https://img.youtube.com/vi/xRhoxP4koxo/maxresdefault.jpg)](https://youtu.be/xRhoxP4koxo)
+
+*Watch the demo on YouTube.*
+
 Resona is a Flutter showcase for adaptive experiences built with the Synheart Human State Interface (HSI). It combines supported wearable signals, on-device state computation, and a user-controlled music player to demonstrate how an application can respond thoughtfully as the available evidence changes.
 
 ## What Resona demonstrates
