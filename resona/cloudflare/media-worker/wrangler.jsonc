@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "resona-media",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-09",
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "resona-media"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  }
+}

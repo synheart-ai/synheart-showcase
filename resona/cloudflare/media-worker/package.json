@@ -1,0 +1,15 @@
+{
+  "name": "resona-media-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "types": "wrangler types"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2",
+    "wrangler": "^4.130.0"
+  }
+}
