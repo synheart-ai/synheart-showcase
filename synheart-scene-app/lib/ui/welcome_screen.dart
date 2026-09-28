@@ -1,0 +1,80 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
+import '../app/scene_cubit.dart';
+import '../app/synheart.dart';
+import '../data/demo_persona.dart';
+import 'routes.dart';
+import 'theme.dart';
+import 'widgets.dart';
+
+/// Screen 1 — the promise: find the right movie for right now.
+class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final hasProfile = context.select((SceneCubit c) => c.state.hasProfile);
+    final synheart = context.read<SynheartService>();
+
+    return Scaffold(
+      body: PageBody(
+        bottom: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasProfile) ...[
+              FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Continue to my check-in')),
+              const SizedBox(height: 10),
+              OutlinedButton(onPressed: () => context.go(Routes.dna), child: const Text('See my Movie DNA')),
+            ] else ...[
+              FilledButton(onPressed: () => context.go(Routes.profile), child: const Text('Build my movie profile')),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: () {
+                  context.read<SceneCubit>().useAnswers(demoPersonaAnswers);
+                  context.go(Routes.dna);
+                },
+                child: const Text('Try the demo profile'),
+              ),
+            ],
+          ],
+        ),
+        children: [
+          const SizedBox(height: 40),
+          const Eyebrow('Scene'),
+          const SizedBox(height: 12),
+          Text('Scene by Synheart', style: t.displaySmall),
+          const SizedBox(height: 8),
+          Container(height: 2, width: 64, color: SceneColors.accent),
+          const SizedBox(height: 28),
+          Text('Taste tells us what you like.', style: t.titleLarge),
+          const SizedBox(height: 4),
+          Text('Your state helps us understand what might fit right now.', style: t.titleLarge?.copyWith(color: SceneColors.sage)),
+          const SizedBox(height: 28),
+          const Callout(
+            title: 'Find the right movie for right now',
+            child: Text(
+              'First, Scene learns what you normally enjoy. Then a short Synheart check-in adds '
+              'context about this moment — so your picks fit tonight, without changing who you are.',
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Icon(synheart.isAvailable ? Icons.favorite : Icons.favorite_border, size: 16, color: SceneColors.sage),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  synheart.isAvailable ? 'Powered by Synheart — on-device, how you type, never what you type.' : 'Synheart is not available on this device; you can set your state by hand.',
+                  style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
