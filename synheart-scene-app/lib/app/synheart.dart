@@ -3,37 +3,65 @@ import 'package:synheart_behavior/synheart_behavior.dart';
 
 /// Owns the Synheart Behavior SDK for the app.
 ///
-/// Scene only needs typing signals for the check-in, so input signals are
-/// on and motion is off. If the SDK cannot start (an unsupported platform,
-/// a test), the app keeps working and the check-in offers the manual path.
+/// Nothing is collected before consent (RFC §4.4): the SDK is initialised
+/// only when the user agrees on the check-in screen, and disposed when they
+/// leave it, so there is no background collection (RFC §5). Scene needs
+/// typing signals only, so input signals are on and attention and motion
+/// are off.
+///
+/// The typing metrics themselves are computed by the SDK's
+/// `BehaviorTextField` in Dart and delivered through its `onTypingEvent`
+/// callback, so the check-in still works if the native side cannot start.
+/// Checked in the synheart_behavior 0.4.1 source, which has no HTTP client:
+/// nothing is sent off the device.
 class SynheartService {
-  SynheartService._(this.behavior, this.error);
+  SynheartService() : enabled = true;
 
-  /// Null when the SDK could not be initialised.
-  final SynheartBehavior? behavior;
+  /// For tests and platforms without the native SDK: [start] never
+  /// initialises it.
+  SynheartService.unavailable() : enabled = false;
 
-  /// Why initialisation failed, for the check-in screen.
-  final String? error;
+  final bool enabled;
 
-  bool get isAvailable => behavior != null;
+  SynheartBehavior? _behavior;
+  String? _error;
 
-  static Future<SynheartService> start() async {
+  /// Null until [start] succeeds.
+  SynheartBehavior? get behavior => _behavior;
+
+  /// Why the native SDK did not start, if it did not.
+  String? get error => _error;
+
+  /// Initialise the SDK after consent. Returns whether the native side runs.
+  Future<bool> start() async {
+    if (_behavior != null) return true;
+    if (!enabled) return false;
     try {
-      final behavior = await SynheartBehavior.initialize(
+      _behavior = await SynheartBehavior.initialize(
         config: const BehaviorConfig(
           enableInputSignals: true,
-          enableAttentionSignals: true,
+          enableAttentionSignals: false,
           enableMotionLite: false,
         ),
       );
-      return SynheartService._(behavior, null);
+      _error = null;
+      return true;
     } catch (e) {
       debugPrint('Synheart Behavior unavailable: $e');
-      return SynheartService._(null, '$e');
+      _error = '$e';
+      return false;
     }
   }
 
-  /// For tests and platforms without the SDK.
-  factory SynheartService.unavailable([String reason = 'Synheart Behavior is not available here.']) =>
-      SynheartService._(null, reason);
+  /// Stop collecting when the check-in closes.
+  Future<void> stop() async {
+    final b = _behavior;
+    _behavior = null;
+    if (b == null) return;
+    try {
+      await b.dispose();
+    } catch (e) {
+      debugPrint('Synheart Behavior dispose failed: $e');
+    }
+  }
 }

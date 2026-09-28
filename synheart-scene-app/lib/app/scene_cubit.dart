@@ -85,18 +85,40 @@ class SceneState extends Equatable {
   List<Object?> get props => [answers, profile, current, viewing, mode, feedback];
 }
 
-/// The app's single source of truth. Taste answers are persisted so a demo
-/// survives an app restart; the current state deliberately is not — it is
-/// about *now*.
+/// The app's single source of truth.
+///
+/// Stored on the device (RFC §6): the user's direct taste answers, kept
+/// separate from the derived profile, and the **derived** state snapshot
+/// (three levels, its source and time). Typed text and raw behaviour events
+/// are never stored. Reset demo clears both.
 class SceneCubit extends Cubit<SceneState> {
-  SceneCubit({this.prefs}) : super(const SceneState()) {
+  SceneCubit({this.prefs, DateTime Function()? clock})
+      : _clock = clock ?? DateTime.now,
+        super(const SceneState()) {
     _restore();
   }
 
   final SharedPreferences? prefs;
+  final DateTime Function() _clock;
   static const _key = 'scene.tasteAnswers.v1';
+  static const _stateKey = 'scene.stateSnapshot.v1';
+
+  DateTime now() => _clock();
+
+  /// The state snapshot if it is fresh; otherwise null, so the app falls
+  /// back to taste only instead of implying Synheart shaped the list
+  /// (RFC §8).
+  CurrentState? get freshState {
+    final c = state.current;
+    return c == null || c.isStaleAt(now()) ? null : c;
+  }
 
   void _restore() {
+    _restoreAnswers();
+    _restoreState();
+  }
+
+  void _restoreAnswers() {
     final raw = prefs?.getString(_key);
     if (raw == null) return;
     try {
@@ -112,6 +134,43 @@ class SceneCubit extends Cubit<SceneState> {
     } catch (_) {
       // A stored profile from an older build is simply ignored.
     }
+  }
+
+  void _restoreState() {
+    try {
+      final raw = prefs?.getString(_stateKey);
+      if (raw == null) return;
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      emit(state.copyWith(
+        current: CurrentState(
+          energy: (m['energy'] as num).toDouble(),
+          mentalLoad: (m['mentalLoad'] as num).toDouble(),
+          engagement: (m['engagement'] as num).toDouble(),
+          source: StateSource.values.byName(m['source'] as String),
+          capturedAt: DateTime.parse(m['capturedAt'] as String),
+        ),
+      ));
+    } catch (_) {
+      // An unreadable snapshot is dropped; the user can check in again.
+    }
+  }
+
+  void _persistState() {
+    final c = state.current;
+    if (c == null) {
+      prefs?.remove(_stateKey);
+      return;
+    }
+    prefs?.setString(
+      _stateKey,
+      jsonEncode({
+        'energy': c.energy,
+        'mentalLoad': c.mentalLoad,
+        'engagement': c.engagement,
+        'source': c.source.name,
+        'capturedAt': c.capturedAt!.toIso8601String(),
+      }),
+    );
   }
 
   void _persist() {
@@ -156,7 +215,18 @@ class SceneCubit extends Cubit<SceneState> {
     _persist();
   }
 
-  void setCurrentState(CurrentState s) => emit(state.copyWith(current: s));
+  /// A new snapshot is stamped now; an adjustment keeps the original time,
+  /// because the signals are still from that check-in.
+  void setCurrentState(CurrentState s) {
+    emit(state.copyWith(current: s.capturedAt == null ? s.copyWith(capturedAt: now()) : s));
+    _persistState();
+  }
+
+  /// Declined or skipped check-in: no state, taste only (RFC §9.7).
+  void clearCurrentState() {
+    emit(state.copyWith(clearCurrent: true, mode: RecommendationMode.tasteOnly));
+    _persistState();
+  }
 
   void setMode(RecommendationMode m) => emit(state.copyWith(mode: m));
 
@@ -169,9 +239,10 @@ class SceneCubit extends Cubit<SceneState> {
   void giveFeedback(String filmId, Feedback f, {Set<String> reasons = const {}}) =>
       emit(state.copyWith(feedback: {...state.feedback, filmId: (f, reasons)}));
 
-  /// Start over (for running the demo again).
+  /// Reset demo: clears the stored inputs and the state snapshot (RFC §9.8).
   void reset() {
     prefs?.remove(_key);
+    prefs?.remove(_stateKey);
     emit(const SceneState());
   }
 }

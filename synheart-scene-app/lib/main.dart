@@ -11,15 +11,18 @@ import 'ui/theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
-  final synheart = await SynheartService.start();
-  runApp(SceneApp(prefs: prefs, synheart: synheart));
+  // The SDK is not started here: it starts only after consent on the check-in.
+  runApp(SceneApp(prefs: prefs, synheart: SynheartService()));
 }
 
 class SceneApp extends StatefulWidget {
-  const SceneApp({super.key, this.prefs, required this.synheart});
+  const SceneApp({super.key, this.prefs, required this.synheart, this.clock});
 
   final SharedPreferences? prefs;
   final SynheartService synheart;
+
+  /// For tests of state freshness.
+  final DateTime Function()? clock;
 
   @override
   State<SceneApp> createState() => _SceneAppState();
@@ -39,9 +42,10 @@ class _SceneAppState extends State<SceneApp> {
     return RepositoryProvider.value(
       value: widget.synheart,
       child: BlocProvider(
-        create: (_) => SceneCubit(prefs: widget.prefs),
-        // The SDK's gesture detector must wrap the app for tap / scroll signals.
-        child: widget.synheart.behavior?.wrapWithGestureDetector(app) ?? app,
+        create: (_) => SceneCubit(prefs: widget.prefs, clock: widget.clock),
+        // No app-wide gesture detector: Scene uses typing signals only, and
+        // only during a consented check-in.
+        child: app,
       ),
     );
   }

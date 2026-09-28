@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scene/app/synheart.dart';
 import 'package:scene/main.dart';
 
+import 'helpers.dart';
+
 void main() {
   Future<void> toTonight(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1170, 2532);
@@ -14,7 +16,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start my Synheart check-in'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Use demo scenario'));
+    await tapDemo(tester, 'Busy day');
     await tester.pumpAndSettle();
     await tester.tap(find.text("See tonight's picks"));
     await tester.pumpAndSettle();

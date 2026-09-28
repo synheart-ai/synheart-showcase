@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/scene_cubit.dart';
-import '../app/synheart.dart';
 import '../data/demo_persona.dart';
 import 'routes.dart';
 import 'theme.dart';
@@ -17,7 +16,6 @@ class WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final hasProfile = context.select((SceneCubit c) => c.state.hasProfile);
-    final synheart = context.read<SynheartService>();
 
     return Scaffold(
       body: PageBody(
@@ -63,11 +61,11 @@ class WelcomeScreen extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              Icon(synheart.isAvailable ? Icons.favorite : Icons.favorite_border, size: 16, color: SceneColors.sage),
+              const Icon(Icons.favorite_border, size: 16, color: SceneColors.sage),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  synheart.isAvailable ? 'Powered by Synheart — on-device, how you type, never what you type.' : 'Synheart is not available on this device; you can set your state by hand.',
+                  'Powered by Synheart — on this device, how you type, never what you type. Nothing is collected until you agree.',
                   style: t.bodyMedium?.copyWith(color: SceneColors.sage),
                 ),
               ),
