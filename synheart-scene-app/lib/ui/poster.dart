@@ -1,10 +1,15 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../app/movie_info_store.dart';
 import '../domain/film.dart';
 import 'theme.dart';
 
-/// A typographic poster: no image rights needed for the demo. The colour
-/// follows the film's tone so the grid reads at a glance.
+/// The film's TMDB poster when one is available, otherwise a typographic
+/// poster. The typographic one is also the placeholder while the image
+/// loads and the fallback offline or on error, so the demo never shows an
+/// empty tile. Images are cached on disk after the first load.
 class Poster extends StatelessWidget {
   const Poster(this.film, {super.key, this.width = 72, this.height = 104});
 
@@ -23,6 +28,25 @@ class Poster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = context.watch<MovieInfoStore>()[film.id]?.posterUrl(size: width > 140 ? 'w500' : 'w342');
+    final fallback = _typographic();
+    if (url == null) return fallback;
+    return ExcludeSemantics(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: CachedNetworkImage(
+          imageUrl: url,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => fallback,
+          errorWidget: (_, _, _) => fallback,
+        ),
+      ),
+    );
+  }
+
+  Widget _typographic() {
     final c = colorFor(film.tone);
     // Decorative: the title is always shown (and read) next to the poster, or
     // the tappable poster carries its own label. Excluding it stops screen

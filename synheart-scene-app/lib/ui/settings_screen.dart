@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../app/demo_log.dart';
+import '../app/movie_info_store.dart';
 import '../app/scene_cubit.dart';
 import '../app/signals.dart';
 import '../app/state_engine.dart';
+import '../data/catalogue.dart';
 import '../data/demo_scenarios.dart';
+import '../data/tmdb.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -89,6 +92,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (!engine.consented) ..._consentCard(context, engine) else ..._sources(context, engine),
           const SizedBox(height: 28),
           ..._demo(context),
+          const SizedBox(height: 28),
+          const _FilmData(),
         ],
       ),
     );
@@ -277,6 +282,41 @@ class _Point extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Where posters and synopses come from, with TMDB's required attribution.
+class _FilmData extends StatelessWidget {
+  const _FilmData();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final movies = context.watch<MovieInfoStore>();
+    final status = !movies.enabled
+        ? 'No TMDB token in this build, so posters are typographic. Run with --dart-define-from-file=tmdb.json.'
+        : movies.loading
+            ? 'Fetching film data… ${movies.matched} of ${allFilms.length}'
+            : movies.error ?? '${movies.matched} of ${allFilms.length} films matched on TMDB. Cached for offline use.';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Film data', style: t.titleMedium),
+        const SizedBox(height: 4),
+        Text(status, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+        if (movies.enabled && !movies.loading)
+          TextButton(
+            onPressed: () async {
+              await movies.clear();
+              await movies.refresh(allFilms);
+            },
+            child: const Text('Fetch film data again'),
+          ),
+        const SizedBox(height: 4),
+        Text('Posters, synopses and trailers: TMDB. $tmdbAttribution Recommendations use Scene\'s own film tags.',
+            style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+      ],
     );
   }
 }

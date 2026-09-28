@@ -92,6 +92,33 @@ flutter run -d <device-id> --release  # for demos
 
 Requirements: Flutter 3.44.8 (Dart 3.12), iOS 16.2+, Android API 28+.
 
+## Film data (TMDB)
+
+Posters, synopses, runtimes and trailers come from [TMDB](https://www.themoviedb.org).
+Scene's **own tags** — intensity, cognitive load, energy, tone, familiarity —
+still drive every recommendation; no movie API provides them (RFC §6).
+
+1. Create a TMDB account and an API key (Settings → API). Either the v4 *API
+   Read Access Token* or the v3 *API Key* works.
+2. Put it in `tmdb.json` at the project root. The file is gitignored:
+   ```json
+   {"TMDB_TOKEN": "<your token>"}
+   ```
+3. Run with `flutter run --dart-define-from-file=tmdb.json`.
+4. Optional but recommended: pin the matches so they are reviewable.
+   `dart run tool/resolve_tmdb.dart` writes `lib/data/tmdb_ids.dart` and lists
+   any misses, plus runtimes that differ from the catalogue.
+
+Film data is cached on the device after the first fetch, so a demo works
+offline. Without a token, or for a film TMDB has no confident match for,
+Scene shows its typographic poster. Settings → *Film data* shows the match
+count.
+
+> TMDB's terms require attribution, which the app shows in Settings and on
+> *Why this movie?*. They also ask for the TMDB logo, which is **not added
+> yet**. TMDB is free for non-commercial use; confirm the licence before
+> sharing the demo externally (RFC §12).
+
 ## Connect a source
 
 1. On the home screen, tap the state pill, then **Settings**.

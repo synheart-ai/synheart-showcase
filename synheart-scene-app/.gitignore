@@ -47,3 +47,6 @@ app.*.map.json
 # Proprietary Synheart native runtime artifacts, installed with `synheart install runtime`
 # (restore with `synheart sync`). synheart.lock is committed.
 /synheart/vendor/
+
+# TMDB credentials (flutter run --dart-define-from-file=tmdb.json). Never commit.
+tmdb.json

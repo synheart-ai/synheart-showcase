@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app/demo_log.dart';
+import '../app/movie_info_store.dart';
+import '../data/tmdb.dart';
 import '../app/scene_cubit.dart';
 import '../engine/recommender.dart';
 import 'picks.dart';
@@ -61,6 +65,7 @@ class WhyScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
+            _Synopsis(filmId: f.id),
             Callout(title: r.fitLabel.toUpperCase(), child: Text(e.headline)),
             const SizedBox(height: 20),
             _Reason(icon: Icons.person_outline, title: 'Your taste', text: e.taste),
@@ -139,6 +144,46 @@ class _Factor extends StatelessWidget {
           child: LinearProgressIndicator(value: value, minHeight: 8, backgroundColor: SceneColors.panel, color: SceneColors.ink),
         ),
       ]),
+    );
+  }
+}
+
+/// TMDB's synopsis and trailer, when available, with the attribution TMDB
+/// requires. Nothing here affects the ranking.
+class _Synopsis extends StatelessWidget {
+  const _Synopsis({required this.filmId});
+  final String filmId;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = context.watch<MovieInfoStore>()[filmId];
+    if (info == null) return const SizedBox(height: 20);
+    final t = Theme.of(context).textTheme;
+    final trailer = info.trailerUrl;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (info.overview != null) ...[
+            Text('Synopsis', style: t.titleMedium),
+            const SizedBox(height: 4),
+            Text(info.overview!, style: t.bodyLarge),
+            const SizedBox(height: 10),
+          ],
+          if (trailer != null)
+            OutlinedButton.icon(
+              onPressed: () {
+                context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': filmId, 'from': 'trailer'});
+                launchUrl(trailer, mode: LaunchMode.externalApplication);
+              },
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Watch trailer'),
+            ),
+          const SizedBox(height: 6),
+          Text('Film data from TMDB. $tmdbAttribution', style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+        ],
+      ),
     );
   }
 }
