@@ -174,6 +174,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Heart-rate and HRV records from your watch. You will be asked for permission.',
         onTap: engine.busy ? null : () => _run(_engine.connectPlatformHealth),
       ),
+      if (engine.backend.supportsWatch)
+        _SourceTile(
+          icon: Icons.watch,
+          title: 'Galaxy Watch',
+          subtitle: 'Live heart rate from Scene on your watch. Heart rate only — some readings may stay unavailable.',
+          onTap: engine.busy ? null : () => _run(_engine.connectWatch),
+        ),
       _SourceTile(
         icon: Icons.bluetooth,
         title: 'Bluetooth heart-rate monitor',

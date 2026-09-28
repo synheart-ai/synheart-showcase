@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:synheart_core/synheart_core.dart';
 
@@ -44,6 +45,13 @@ abstract class SignalBackend {
   /// A WearSim demo source streaming `ai.synheart.wearsim.signal.v1`.
   Future<void> connectWearSim(Uri endpoint);
 
+  /// Whether this platform can use the Scene Galaxy Watch (Wear OS) app.
+  bool get supportsWatch;
+
+  /// Start heart-rate streaming from the Scene watch app; returns the watch
+  /// name. Throws when no watch is connected.
+  Future<String> connectWatch();
+
   /// Disconnect whichever source is active; the runtime keeps running.
   Future<void> disconnectSource();
 }
@@ -64,6 +72,11 @@ class SynheartSignals implements SignalBackend {
   StreamSubscription<dynamic>? _socketSamples;
   bool _bleConnected = false;
   bool _running = false;
+
+  // The Scene watch app, via the phone-side WatchRelay (android/app).
+  static const _watch = MethodChannel('ai.synheart.scene/watch');
+  static const _watchEvents = EventChannel('ai.synheart.scene/watch_events');
+  StreamSubscription<dynamic>? _watchSamples;
 
   @override
   Stream<CurrentState> get readings => _readings.stream;
@@ -234,7 +247,44 @@ class SynheartSignals implements SignalBackend {
   }
 
   @override
+  bool get supportsWatch => Platform.isAndroid;
+
+  @override
+  Future<String> connectWatch() async {
+    if (!supportsWatch) throw UnsupportedError('The Galaxy Watch app needs an Android phone.');
+    final name = await _watch.invokeMethod<String>('connectedWatch');
+    if (name == null) {
+      throw StateError('No watch is connected. Pair your Galaxy Watch with this phone and install Scene on it.');
+    }
+    await disconnectSource();
+    _watchSamples = _watchEvents.receiveBroadcastStream().listen((dynamic e) {
+      if (e is! Map) return;
+      switch (e['type']) {
+        case 'hr_sample':
+          final bpm = (e['bpm'] as num?)?.toDouble() ?? 0;
+          if (bpm <= 0) return;
+          _heartRate.add(bpm);
+          // Heart rate only: Wear OS Health Services' HEART_RATE_BPM has no RR
+          // intervals, so HRV-based axes may stay below the confidence gate.
+          Synheart.pushWearHr((e['timestamp'] as num).toInt(), bpm, provider: 'wear_os');
+        case 'stream_error':
+          _readings.addError(StateError(e['message'] as String? ?? 'The watch could not start heart rate.'));
+      }
+    }, onError: _readings.addError);
+    await _watch.invokeMethod<bool>('startStream');
+    return name;
+  }
+
+  @override
   Future<void> disconnectSource() async {
+    if (_watchSamples != null) {
+      await _watchSamples!.cancel();
+      _watchSamples = null;
+      try {
+        await _watch.invokeMethod<bool>('stopStream');
+      } catch (_) {}
+    }
+
     await _socketSamples?.cancel();
     await _socket?.close();
     _socketSamples = null;

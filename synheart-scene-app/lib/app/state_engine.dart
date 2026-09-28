@@ -10,6 +10,7 @@ enum WearableSource {
   none('No source'),
   platformHealth('Apple Health / Health Connect'),
   bluetooth('Bluetooth heart-rate monitor'),
+  watch('Galaxy Watch'),
   wearSim('WearSim demo source');
 
   const WearableSource(this.label);
@@ -137,6 +138,14 @@ class SceneStateEngine extends ChangeNotifier {
 
   Future<void> connectBluetooth(WearableDevice d) =>
       _connect(WearableSource.bluetooth, () => backend.connectBluetooth(d), name: d.name);
+
+  /// The Scene Galaxy Watch app (Wear OS), streaming heart rate.
+  Future<void> connectWatch() async {
+    String? name;
+    await _connect(WearableSource.watch, () async => name = await backend.connectWatch());
+    _sourceName = name;
+    notifyListeners();
+  }
 
   /// `wearsim://pair?endpoint=ws://…&expires=<ms>`, from a deep link or pasted.
   Future<void> pairWearSim(Uri link) async {

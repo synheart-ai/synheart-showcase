@@ -42,5 +42,18 @@ class FakeSignals implements SignalBackend {
   @override
   Future<void> disconnectSource() async => calls.add('disconnect');
 
+  bool watchSupported = true;
+  String? watchName = 'Galaxy Watch6';
+
+  @override
+  bool get supportsWatch => watchSupported;
+
+  @override
+  Future<String> connectWatch() async {
+    calls.add('watch');
+    if (watchName == null) throw StateError('No watch is connected.');
+    return watchName!;
+  }
+
   void emit(CurrentState s) => readingsCtl.add(s);
 }

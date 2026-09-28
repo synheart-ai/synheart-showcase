@@ -127,6 +127,26 @@ void main() {
     });
   });
 
+  group('Galaxy Watch', () {
+    test('connecting names the watch and streams like any other source', () async {
+      await engine.consent();
+      await engine.connectWatch();
+      expect(fake.calls, ['start', 'disconnect', 'watch']);
+      expect(engine.source, WearableSource.watch);
+      expect(engine.sourceName, 'Galaxy Watch6');
+      fake.heartRateCtl.add(71);
+      expect(engine.isLive, isTrue);
+    });
+
+    test('no connected watch is reported, not silently ignored', () async {
+      fake.watchName = null;
+      await engine.consent();
+      await expectLater(engine.connectWatch(), throwsStateError);
+      expect(engine.source, WearableSource.none);
+      expect(engine.error, contains('No watch is connected'));
+    });
+  });
+
   test('a failing runtime start is reported and consent is not recorded', () async {
     fake.failStart = StateError('runtime missing');
     await expectLater(engine.consent(), throwsStateError);

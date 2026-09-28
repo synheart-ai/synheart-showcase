@@ -44,3 +44,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Wearable Data Layer: receives heart rate from the Scene Galaxy Watch app.
+    implementation("com.google.android.gms:play-services-wearable:18.2.0")
+}

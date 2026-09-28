@@ -87,6 +87,19 @@ void main() {
     expect(find.text('Help me unwind (suggested)'), findsOneWidget);
   });
 
+  testWidgets('the Galaxy Watch source connects and shows the watch name', (tester) async {
+    await toTonight(tester);
+    tester.view.physicalSize = const Size(1170, 7000);
+    await openSettings(tester);
+    await tester.tap(find.text('I agree — continue'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Heart rate only'), findsOneWidget);
+    await tester.tap(find.text('Galaxy Watch'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, contains('watch'));
+    expect(find.text('Galaxy Watch6'), findsOneWidget);
+  });
+
   testWidgets('a demo scenario is labelled demo data everywhere', (tester) async {
     await toTonight(tester);
     await useDemo(tester, 'Busy day');
