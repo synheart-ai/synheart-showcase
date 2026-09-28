@@ -22,10 +22,32 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>ai.synheart.scene</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>scene</string>
+				<string>wearsim</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Scene connects to a compatible heart-rate monitor that you choose.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Scene reads heart-rate and HRV data, on this device, to suggest films that may fit your current state.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Scene does not write health data.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Scene connects to a WearSim demo source on your local network when you pair one.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

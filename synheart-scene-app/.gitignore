@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Proprietary Synheart native runtime artifacts, installed with `synheart install runtime`
+# (restore with `synheart sync`). synheart.lock is committed.
+/synheart/vendor/

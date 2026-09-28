@@ -19,7 +19,8 @@ android {
         applicationId = "ai.synheart.scene"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Health Connect and the Synheart runtime need API 28+.
+        minSdk = 28
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
