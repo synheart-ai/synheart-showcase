@@ -68,12 +68,13 @@ void main() {
     expect(find.text('Because you want to switch off'), findsOneWidget);
 
     // "Wrong for me" on Knives Out drops it from tonight's list.
-    await tester.ensureVisible(find.text('Knives Out').first);
+    final card = find.descendant(of: find.byType(Card), matching: find.text('Knives Out')).first;
+    await tester.ensureVisible(card);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Knives Out').first, warnIfMissed: false);
+    await tester.tap(card);
     await tester.pumpAndSettle();
     expect(find.text('Why this movie?'), findsOneWidget);
-    await tester.dragUntilVisible(find.text('Wrong for me'), find.text('Your baseline'), const Offset(0, -300));
+    await tester.dragUntilVisible(find.text('Wrong for me'), find.byType(ListView).last, const Offset(0, -300));
     await tester.ensureVisible(find.text('Wrong for me'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Wrong for me'));

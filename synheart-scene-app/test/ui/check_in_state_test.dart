@@ -25,7 +25,7 @@ void main() {
     await tester.tap(find.text('Use demo scenario'));
     await tester.pumpAndSettle();
 
-    expect(find.text('DEMO PRESET'), findsOneWidget);
+    expect(find.text('DEMO DATA — NOT A REAL CHECK-IN'), findsOneWidget);
     expect(find.text('You seem to be looking to unwind.'), findsOneWidget);
     expect(find.text('Unwind'), findsOneWidget);
 

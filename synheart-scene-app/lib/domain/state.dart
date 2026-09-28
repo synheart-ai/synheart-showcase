@@ -37,7 +37,7 @@ enum Experience {
 enum StateSource {
   synheart('From your Synheart check-in'),
   adjusted('Adjusted by you'),
-  preset('Demo preset');
+  preset('Demo data — not a real check-in');
 
   const StateSource(this.label);
   final String label;
@@ -51,7 +51,17 @@ class CurrentState extends Equatable {
     required this.mentalLoad,
     required this.engagement,
     required this.source,
+    this.capturedAt,
   });
+
+  /// How long a check-in stays usable. A tunable default: the RFC leaves the
+  /// freshness rule open (§13).
+  static const freshFor = Duration(hours: 2);
+
+  /// When the snapshot was taken; null for a preset not yet applied.
+  final DateTime? capturedAt;
+
+  bool isStaleAt(DateTime now) => capturedAt != null && now.difference(capturedAt!) > freshFor;
 
   /// 0–1.
   final double energy;
@@ -72,12 +82,13 @@ class CurrentState extends Equatable {
     return Experience.easyWatch;
   }
 
-  CurrentState copyWith({double? energy, double? mentalLoad, double? engagement, StateSource? source}) =>
+  CurrentState copyWith({double? energy, double? mentalLoad, double? engagement, StateSource? source, DateTime? capturedAt}) =>
       CurrentState(
         energy: energy ?? this.energy,
         mentalLoad: mentalLoad ?? this.mentalLoad,
         engagement: engagement ?? this.engagement,
         source: source ?? this.source,
+        capturedAt: capturedAt ?? this.capturedAt,
       );
 
   /// The plan's example state card: moderate energy, high mental load,
@@ -90,7 +101,7 @@ class CurrentState extends Equatable {
   );
 
   @override
-  List<Object?> get props => [energy, mentalLoad, engagement, source];
+  List<Object?> get props => [energy, mentalLoad, engagement, source, capturedAt];
 }
 
 /// "Choose My Evening" — explicit user intent, which always wins over the

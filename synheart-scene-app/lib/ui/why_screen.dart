@@ -72,7 +72,7 @@ class WhyScreen extends StatelessWidget {
           const Divider(height: 28),
           Row(children: [
             Expanded(child: Text('Overall match', style: t.titleMedium)),
-            Text('${r.matchPercent}%', style: t.titleLarge),
+            Flexible(child: Text(r.fitLabel, style: t.titleMedium, textAlign: TextAlign.end)),
           ]),
           const SizedBox(height: 28),
           FeedbackPanel(filmId: f.id),
