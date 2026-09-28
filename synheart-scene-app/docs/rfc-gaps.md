@@ -1,0 +1,42 @@
+# RFC gaps — what the first build did not meet
+
+Checked 2026-09-28 against [`rfc.md`](rfc.md). The first build followed the demo
+**plan** (PDF). The RFC is stricter in several places. Each gap below is closed in
+its own commit (see `git log`).
+
+| # | RFC | First build | Fix |
+|---|---|---|---|
+| 1 | §4.4, §6 — consent **before** collecting signals; Skip | `SynheartBehavior.initialize()` ran in `main()` and an app-wide gesture detector was attached, so collection could start before any consent. No consent step, no Skip | Consent card first; SDK started only after consent; no app-wide wrapper; Skip → taste only |
+| 2 | §9.3 — loading / success / insufficient-signal / failure states | Snackbar on too little typing; no failure state | Explicit check-in status panel |
+| 3 | §6 — confirm whether data leaves the device, and say so | Copy said "on this device" without verification | Verified in the 0.4.1 source (no HTTP client; Android only *reads* connectivity status); copy states it |
+| 4 | §4.5, §8 — timestamp; snapshot age; offer a new check-in; stale → Taste only | No timestamp, no staleness | `capturedAt`; stale after 2 h (tunable default); stale or missing → taste only, labelled |
+| 5 | §6 — labels are provisional; show only interpretable outputs; tentative language | "You seem to be …" | Labels marked provisional; "This may be a good evening to …" |
+| 6 | §4.5 — skip or correct the suggested viewing intent | Intent only on Tonight, only in taste + state mode | Intent chips on Current context and in both modes |
+| 7 | §4 — explicit intent takes precedence over an inferred need | Intent carried a fixed 15% | With an intent, context takes the 35% share and state the 15% share |
+| 8 | §7 — no numerical "% match" | "Overall match 94%" and percentage bars | Descriptive fit labels ("Strong fit for tonight") |
+| 9 | §8 — Why: "Your taste" / "Right now" / "How that affected this pick" | "Your baseline" / "Your current context" / "The recommendation" | Renamed; every line from the contribution record |
+| 10 | §4.8 — show which items **moved** and why | Only a "new tonight" marker | Rank movement (↑ ↓ new, dropped) |
+| 11 | §10 — a no-change result is explained honestly | Not handled | Compare says so when the lists barely differ |
+| 12 | §5, §10 — seeded scenarios: meaningful change / no meaningful change / unavailable, labelled demo data | One preset | Three labelled scenarios |
+| 13 | §4.3, §9.2 — edit the baseline | "Redo" wiped everything | Edit keeps answers; separate Reset demo |
+| 14 | §6, §9.8 — reset clears inputs **and** state snapshot; derived snapshot may be stored | Snapshot not stored | Derived snapshot persisted (no raw events, no text); reset clears both |
+| 15 | §9.1 — every optional preference can be skipped | Genres step needed at least one rating | "Skip" on every step; baseline from what remains |
+| 16 | §10 — instrument the demo events, no raw content | None | Local event log: event names and enum values only |
+| 17 | §9.9 — accessible controls; obvious back path | `context.go` everywhere, so no back arrow; posters read titles twice | Forward steps push; poster art excluded from semantics |
+
+## Open decisions (§13) — what the build assumes until they are made
+
+| Decision | Current assumption |
+|---|---|
+| Platform / framework | Flutter, iOS + Android |
+| SDK interaction and outputs | `synheart_behavior` 0.4.1 `BehaviorTextField` typing metrics; see [state-mapping.md](state-mapping.md) |
+| Real SDK results, seeded data, or both | Both; seeded ones are labelled **Demo data** everywhere they appear |
+| Processing, storage, retention | On device only. Answers and the derived snapshot are kept in app storage until **Reset demo**. Typed text and raw events are never stored |
+| Tagging and media rights owner | **Open.** Tags are my curation; posters are typographic (no artwork) |
+| Audience and date | **Open** |
+
+## Plan vs RFC differences kept on purpose
+
+- **Feedback:** the RFC asks for "good fit / poor fit plus optional reason". The
+  build keeps the plan's four options. They are a superset: *Perfect* and
+  *Pretty good* count as good, the other two as poor.
