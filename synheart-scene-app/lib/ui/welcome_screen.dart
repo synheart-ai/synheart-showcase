@@ -23,9 +23,13 @@ class WelcomeScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (hasProfile) ...[
-              FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Continue to my check-in')),
+              FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Continue to my check-in')),
               const SizedBox(height: 10),
-              OutlinedButton(onPressed: () => context.go(Routes.dna), child: const Text('See my Movie DNA')),
+              OutlinedButton(onPressed: () => context.push(Routes.dna), child: const Text('See my Movie DNA')),
+              TextButton(
+                onPressed: () => confirmReset(context, onReset: context.read<SceneCubit>().reset),
+                child: const Text('Reset demo'),
+              ),
             ] else ...[
               FilledButton(onPressed: () => context.go(Routes.profile), child: const Text('Build my movie profile')),
               const SizedBox(height: 10),

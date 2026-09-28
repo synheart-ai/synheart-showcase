@@ -31,22 +31,29 @@ class DnaScreen extends StatelessWidget {
     final genres = profile.rankedGenres.take(6).toList();
     return Scaffold(
       appBar: AppBar(title: const Text('Your Movie DNA'), actions: [
-        TextButton(
-          onPressed: () {
+        TextButton(onPressed: () => context.push(Routes.editProfile), child: const Text('Edit')),
+        IconButton(
+          tooltip: 'Reset demo',
+          icon: const Icon(Icons.restart_alt),
+          onPressed: () => confirmReset(context, onReset: () {
             context.read<SceneCubit>().reset();
-            context.go(Routes.profile);
-          },
-          child: const Text('Redo'),
+            context.go(Routes.welcome);
+          }),
         ),
       ]),
       body: PageBody(
-        bottom: FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Start my Synheart check-in')),
+        bottom: FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Start my Synheart check-in')),
         children: [
           const Eyebrow('Your baseline'),
           const SizedBox(height: 6),
           Text('This is what you normally enjoy.', style: t.headlineSmall),
           const SizedBox(height: 4),
           Text('Synheart will not change it — it only helps pick what fits tonight.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+          const SizedBox(height: 10),
+          Text(
+            _inputs(context.select((SceneCubit c) => c.state.answers)),
+            style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+          ),
           const SizedBox(height: 24),
           for (final g in genres) _GenreBar(label: g.key.label, value: g.value),
           const SizedBox(height: 24),
@@ -68,6 +75,16 @@ class DnaScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The user's direct inputs, stated separately from what Scene derived from
+/// them (RFC §6).
+String _inputs(TasteAnswers a) {
+  final notSeen = a.ratings.values.where((r) => r == Rating.notSeen).length;
+  final genres = a.preferredGenres.length;
+  return 'Derived from ${a.answeredCount} film${a.answeredCount == 1 ? '' : 's'} you rated'
+      '${notSeen == 0 ? '' : ' ($notSeen marked "Haven\'t seen", which count for nothing)'}'
+      ' and $genres genre${genres == 1 ? '' : 's'} you picked.';
 }
 
 /// The qualitative half of Movie DNA, e.g. "thought-provoking stories",
@@ -112,7 +129,8 @@ class _GenreBar extends StatelessWidget {
         children: [
           Row(children: [
             Expanded(child: Text(label, style: t.titleMedium)),
-            Text('${(value * 100).round()}%', style: t.titleMedium),
+            // Words, not percentages: the affinity is not a validated measure (RFC §4.3, §7).
+            Text(value >= 0.75 ? 'Strong' : value >= 0.6 ? 'Clear' : value >= 0.45 ? 'Some' : 'Low', style: t.titleMedium),
           ]),
           const SizedBox(height: 6),
           ClipRRect(

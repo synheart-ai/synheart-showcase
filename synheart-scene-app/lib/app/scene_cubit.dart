@@ -186,22 +186,27 @@ class SceneCubit extends Cubit<SceneState> {
     );
   }
 
-  void rate(String filmId, Rating rating) {
-    emit(state.copyWith(answers: state.answers.copyWith(ratings: {...state.answers.ratings, filmId: rating})));
+  /// Once a profile exists, every edit rebuilds it, so the rankings follow
+  /// the user's edits straight away (RFC §9.2).
+  void _answersChanged(TasteAnswers answers) {
+    emit(state.copyWith(answers: answers, profile: state.hasProfile ? buildTasteProfile(answers) : null));
     _persist();
   }
+
+  void rate(String filmId, Rating rating) =>
+      _answersChanged(state.answers.copyWith(ratings: {...state.answers.ratings, filmId: rating}));
+
+  /// Un-answer a film (skipped, or cleared while editing).
+  void clearRating(String filmId) =>
+      _answersChanged(state.answers.copyWith(ratings: {...state.answers.ratings}..remove(filmId)));
 
   void toggleGenre(Genre g) {
     final genres = {...state.answers.preferredGenres};
     genres.contains(g) ? genres.remove(g) : genres.add(g);
-    emit(state.copyWith(answers: state.answers.copyWith(preferredGenres: genres)));
-    _persist();
+    _answersChanged(state.answers.copyWith(preferredGenres: genres));
   }
 
-  void setDiscovery(double v) {
-    emit(state.copyWith(answers: state.answers.copyWith(discovery: v)));
-    _persist();
-  }
+  void setDiscovery(double v) => _answersChanged(state.answers.copyWith(discovery: v));
 
   /// Onboarding done: derive the Movie DNA.
   void completeProfile() {

@@ -53,3 +53,20 @@ class PageBody extends StatelessWidget {
         ),
       );
 }
+
+/// Reset demo: clears the stored answers and state snapshot (RFC §9.8),
+/// after a confirmation, then returns to Welcome.
+Future<void> confirmReset(BuildContext context, {required VoidCallback onReset}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: const Text('Reset the demo?'),
+      content: const Text('This clears your ratings, genres and check-in from this device.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('Reset')),
+      ],
+    ),
+  );
+  if (ok == true) onReset();
+}

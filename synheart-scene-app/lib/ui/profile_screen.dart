@@ -41,17 +41,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: Text(_rating ? 'Build your movie profile' : 'Your preferences'),
       ),
-      body: _rating ? _RateFilm(index: _index, onAnswer: _answer, onSkip: () => setState(() => _index = onboardingFilms.length)) : const _Preferences(),
+      body: _rating
+          ? _RateFilm(
+              index: _index,
+              onAnswer: _answer,
+              onSkipFilm: () {
+                context.read<SceneCubit>().clearRating(onboardingFilms[_index].id);
+                setState(() => _index++);
+              },
+              onSkipRest: () => setState(() => _index = onboardingFilms.length),
+            )
+          : const _Preferences(),
     );
   }
 }
 
 class _RateFilm extends StatelessWidget {
-  const _RateFilm({required this.index, required this.onAnswer, required this.onSkip});
+  const _RateFilm({required this.index, required this.onAnswer, required this.onSkipFilm, required this.onSkipRest});
 
   final int index;
   final ValueChanged<Rating> onAnswer;
-  final VoidCallback onSkip;
+  final VoidCallback onSkipFilm;
+  final VoidCallback onSkipRest;
 
   @override
   Widget build(BuildContext context) {
@@ -79,8 +90,17 @@ class _RateFilm extends StatelessWidget {
               Expanded(child: _AnswerButton(Rating.notSeen, onAnswer, icon: Icons.visibility_off_outlined)),
             ],
           ),
-          if (answered >= 8)
-            TextButton(onPressed: onSkip, child: Text('That\'s enough — $answered films rated')),
+          Row(
+            children: [
+              Expanded(child: TextButton(onPressed: onSkipFilm, child: const Text('Skip this film'))),
+              Expanded(
+                child: TextButton(
+                  onPressed: onSkipRest,
+                  child: Text(answered >= 8 ? 'That\'s enough — $answered rated' : 'Skip the rest'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       children: [
@@ -113,7 +133,15 @@ class _AnswerButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = rating == Rating.love || rating == Rating.like;
-    final child = Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 18), const SizedBox(width: 8), Text(rating.label)]);
+    final child = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 6),
+        // Flexible: "Haven't seen" overflowed at 390 pt phone width.
+        Flexible(child: Text(rating.label, textAlign: TextAlign.center)),
+      ],
+    );
     return primary
         ? FilledButton(onPressed: () => onAnswer(rating), child: child)
         : OutlinedButton(onPressed: () => onAnswer(rating), child: child);
@@ -122,6 +150,39 @@ class _AnswerButton extends StatelessWidget {
 
 class _Preferences extends StatelessWidget {
   const _Preferences();
+
+  @override
+  Widget build(BuildContext context) {
+    final answers = context.select((SceneCubit c) => c.state.answers);
+    final cubit = context.read<SceneCubit>();
+
+    return PageBody(
+      bottom: FilledButton(
+        // Every preference is optional (RFC §9.1): the baseline is built from
+        // whatever was answered.
+        onPressed: () {
+          cubit.completeProfile();
+          context.go(Routes.dna);
+        },
+        child: const Text('See my Movie DNA'),
+      ),
+      children: [
+        const PreferenceControls(),
+        if (answers.answeredCount == 0 && answers.preferredGenres.isEmpty) ...[
+          const SizedBox(height: 20),
+          const Callout(
+            child: Text('You have not rated any films or picked genres, so your baseline will be broad. You can edit it later from Movie DNA.'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Favourite genres and Familiar ↔ Surprise me — used in onboarding and when
+/// editing the baseline.
+class PreferenceControls extends StatelessWidget {
+  const PreferenceControls({super.key});
 
   static const _pickable = [
     Genre.thriller, Genre.mystery, Genre.crime, Genre.sciFi, Genre.drama, Genre.comedy,
@@ -134,20 +195,12 @@ class _Preferences extends StatelessWidget {
     final answers = context.select((SceneCubit c) => c.state.answers);
     final cubit = context.read<SceneCubit>();
 
-    return PageBody(
-      bottom: FilledButton(
-        onPressed: answers.answeredCount == 0
-            ? null
-            : () {
-                cubit.completeProfile();
-                context.go(Routes.dna);
-              },
-        child: const Text('See my Movie DNA'),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Which genres do you usually reach for?', style: t.titleLarge),
         const SizedBox(height: 4),
-        Text('Pick as many as you like.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+        Text('Pick as many as you like — or none.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
         const SizedBox(height: 14),
         Wrap(
           spacing: 8,
@@ -161,7 +214,13 @@ class _Preferences extends StatelessWidget {
         Text('Familiar or surprising?', style: t.titleLarge),
         const SizedBox(height: 4),
         Text('How far should Scene stray from what you already know?', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-        Slider(value: answers.discovery, onChanged: cubit.setDiscovery, divisions: 4, label: _discoveryLabel(answers.discovery)),
+        Slider(
+          value: answers.discovery,
+          onChanged: cubit.setDiscovery,
+          divisions: 4,
+          label: _discoveryLabel(answers.discovery),
+          semanticFormatterCallback: _discoveryLabel,
+        ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -169,10 +228,6 @@ class _Preferences extends StatelessWidget {
             Text('Surprise me', style: t.bodyMedium),
           ],
         ),
-        if (answers.answeredCount == 0) ...[
-          const SizedBox(height: 20),
-          const Callout(child: Text('Rate at least one film you have seen so Scene has a baseline to work from.')),
-        ],
       ],
     );
   }
