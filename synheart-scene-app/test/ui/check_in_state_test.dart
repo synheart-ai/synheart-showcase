@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:scene/app/demo_log.dart';
 import 'package:scene/app/scene_cubit.dart';
 import 'package:scene/app/synheart.dart';
 import 'package:scene/data/demo_scenarios.dart';
@@ -66,6 +68,12 @@ void main() {
     await tester.tap(find.text('Read my current context'));
     await tester.pumpAndSettle();
     expect(find.text('FROM YOUR SYNHEART CHECK-IN'), findsOneWidget);
+
+    // The event log saw the check-in, and never the words (RFC §10).
+    final log = tester.element(find.byType(Scaffold).last).read<SceneCubit>().log;
+    final events = log.entries.map((e) => e.event).toList();
+    expect(events, containsAllInOrder([DemoEvent.onboardingCompleted, DemoEvent.checkInConsented, DemoEvent.checkInSucceeded]));
+    expect(log.entries.map((e) => '$e').join('\n').toLowerCase(), isNot(contains('long day')));
   });
 
   testWidgets('a demo scenario is labelled demo data and can be adjusted', (tester) async {

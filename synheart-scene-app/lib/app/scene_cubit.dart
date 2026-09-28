@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/film.dart';
+import 'demo_log.dart';
 import '../domain/state.dart';
 import '../domain/taste.dart';
 import '../engine/recommender.dart';
@@ -92,14 +93,18 @@ class SceneState extends Equatable {
 /// (three levels, its source and time). Typed text and raw behaviour events
 /// are never stored. Reset demo clears both.
 class SceneCubit extends Cubit<SceneState> {
-  SceneCubit({this.prefs, DateTime Function()? clock})
+  SceneCubit({this.prefs, DateTime Function()? clock, DemoLog? log})
       : _clock = clock ?? DateTime.now,
+        log = log ?? DemoLog(clock: clock),
         super(const SceneState()) {
     _restore();
   }
 
   final SharedPreferences? prefs;
   final DateTime Function() _clock;
+
+  /// Demo events (RFC §10); screens record the ones the cubit cannot see.
+  final DemoLog log;
   static const _key = 'scene.tasteAnswers.v1';
   static const _stateKey = 'scene.stateSnapshot.v1';
 
@@ -212,12 +217,17 @@ class SceneCubit extends Cubit<SceneState> {
   void completeProfile() {
     emit(state.copyWith(profile: buildTasteProfile(state.answers)));
     _persist();
+    log.record(DemoEvent.onboardingCompleted, {
+      'rated': '${state.answers.answeredCount}',
+      'genres': '${state.answers.preferredGenres.length}',
+    });
   }
 
   /// "Try the demo profile" — fills onboarding with the plan's persona.
   void useAnswers(TasteAnswers answers) {
     emit(state.copyWith(answers: answers, profile: buildTasteProfile(answers)));
     _persist();
+    log.record(DemoEvent.onboardingCompleted, {'profile': 'demo'});
   }
 
   /// A new snapshot is stamped now; an adjustment keeps the original time,
@@ -233,21 +243,29 @@ class SceneCubit extends Cubit<SceneState> {
     _persistState();
   }
 
-  void setMode(RecommendationMode m) => emit(state.copyWith(mode: m));
+  void setMode(RecommendationMode m) {
+    if (m != state.mode) log.record(DemoEvent.comparisonToggled, {'mode': m.name});
+    emit(state.copyWith(mode: m));
+  }
 
-  void setIntent(EveningIntent? intent) =>
-      emit(state.copyWith(viewing: state.viewing.copyWith(intent: intent, clearIntent: intent == null)));
+  void setIntent(EveningIntent? intent) {
+    if (intent != state.viewing.intent) log.record(DemoEvent.intentChanged, {'intent': intent?.name ?? 'none'});
+    emit(state.copyWith(viewing: state.viewing.copyWith(intent: intent, clearIntent: intent == null)));
+  }
 
   void setShortOnly(bool on) =>
       emit(state.copyWith(viewing: state.viewing.copyWith(maxRuntimeMinutes: 90, clearRuntime: !on)));
 
-  void giveFeedback(String filmId, Feedback f, {Set<String> reasons = const {}}) =>
-      emit(state.copyWith(feedback: {...state.feedback, filmId: (f, reasons)}));
+  void giveFeedback(String filmId, Feedback f, {Set<String> reasons = const {}}) {
+    emit(state.copyWith(feedback: {...state.feedback, filmId: (f, reasons)}));
+    log.record(DemoEvent.feedbackGiven, {'film': filmId, 'feedback': f.name, if (reasons.isNotEmpty) 'reasons': reasons.join('|')});
+  }
 
   /// Reset demo: clears the stored inputs and the state snapshot (RFC §9.8).
   void reset() {
     prefs?.remove(_key);
     prefs?.remove(_stateKey);
     emit(const SceneState());
+    log.record(DemoEvent.demoReset);
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
 import '../domain/state.dart';
 import '../engine/recommender.dart';
@@ -40,53 +41,60 @@ class CompareScreen extends StatelessWidget {
     }
 
     final demo = picks.state!.source == StateSource.preset;
-    return Scaffold(
-      appBar: AppBar(title: const Text('What changed?')),
-      body: PageBody(
-        bottom: FilledButton(
-          onPressed: () {
-            context.read<SceneCubit>().setMode(RecommendationMode.tastePlusState);
-            context.go(Routes.tonight);
-          },
-          child: const Text('Watch with my current state'),
-        ),
-        children: [
-          if (demo) ...[
-            const Eyebrow('Demo data — not a real check-in'),
+    return LogOnShow(
+      event: DemoEvent.comparisonViewed,
+      fields: {'meaningful': '${c.isMeaningful}', 'new': '${c.newCount}', 'source': picks.state!.source.name},
+      child: Scaffold(
+        appBar: AppBar(title: const Text('What changed?')),
+        body: PageBody(
+          bottom: FilledButton(
+            onPressed: () {
+              context.read<SceneCubit>().setMode(RecommendationMode.tastePlusState);
+              context.go(Routes.tonight);
+            },
+            child: const Text('Watch with my current state'),
+          ),
+          children: [
+            if (demo) ...[
+              const Eyebrow('Demo data — not a real check-in'),
+              const SizedBox(height: 8),
+            ],
+            Text('Taste only', style: t.titleLarge),
             const SizedBox(height: 8),
-          ],
-          Text('Taste only', style: t.titleLarge),
-          const SizedBox(height: 8),
-          for (final (i, r) in c.tasteOnly.indexed)
-            _Row(rank: i + 1, title: r.film.title, note: c.dropped.any((d) => d.film.id == r.film.id) ? 'Drops out tonight' : null),
-          const SizedBox(height: 18),
-          Text('Taste + current state', style: t.titleLarge),
-          const SizedBox(height: 8),
-          for (final change in c.changes)
-            _Row(
-              rank: change.after!,
-              title: change.film.title,
-              badge: _badge(change, c.tasteOnly.length),
-              note: _why(picks, change),
-              onTap: () => context.push(Routes.why(change.film.id)),
-            ),
-          const SizedBox(height: 20),
-          if (c.isMeaningful) ...[
-            const Callout(title: 'Demo line', child: Text("Your preferences haven't changed. Your context has.")),
-            const SizedBox(height: 12),
-            const Callout(
-              title: 'Closing message',
-              child: Text('Synheart adds the missing context between what a person generally prefers and what may fit their present moment.'),
-            ),
-          ] else
-            const Callout(
-              title: 'No meaningful change tonight',
-              child: Text(
-                'Your current context points the same way as your taste, so the same films lead. '
-                'That is a real result, not a failure — Scene does not force a change.',
+            for (final (i, r) in c.tasteOnly.indexed)
+              _Row(rank: i + 1, title: r.film.title, note: c.dropped.any((d) => d.film.id == r.film.id) ? 'Drops out tonight' : null),
+            const SizedBox(height: 18),
+            Text('Taste + current state', style: t.titleLarge),
+            const SizedBox(height: 8),
+            for (final change in c.changes)
+              _Row(
+                rank: change.after!,
+                title: change.film.title,
+                badge: _badge(change, c.tasteOnly.length),
+                note: _why(picks, change),
+                onTap: () {
+                  context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': change.film.id, 'from': 'compare'});
+                  context.push(Routes.why(change.film.id));
+                },
               ),
-            ),
-        ],
+            const SizedBox(height: 20),
+            if (c.isMeaningful) ...[
+              const Callout(title: 'Demo line', child: Text("Your preferences haven't changed. Your context has.")),
+              const SizedBox(height: 12),
+              const Callout(
+                title: 'Closing message',
+                child: Text('Synheart adds the missing context between what a person generally prefers and what may fit their present moment.'),
+              ),
+            ] else
+              const Callout(
+                title: 'No meaningful change tonight',
+                child: Text(
+                  'Your current context points the same way as your taste, so the same films lead. '
+                  'That is a real result, not a failure — Scene does not force a change.',
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

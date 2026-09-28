@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../app/demo_log.dart';
+import '../app/scene_cubit.dart';
 import 'theme.dart';
 
 /// Small caps label above a title ("SCENE", "YOUR MOVIE DNA" …).
@@ -69,4 +72,27 @@ Future<void> confirmReset(BuildContext context, {required VoidCallback onReset})
     ),
   );
   if (ok == true) onReset();
+}
+
+/// Records a demo event once, when [child] is first shown (RFC §10).
+class LogOnShow extends StatefulWidget {
+  const LogOnShow({super.key, required this.event, this.fields = const {}, required this.child});
+
+  final DemoEvent event;
+  final Map<String, String> fields;
+  final Widget child;
+
+  @override
+  State<LogOnShow> createState() => _LogOnShowState();
+}
+
+class _LogOnShowState extends State<LogOnShow> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<SceneCubit>().log.record(widget.event, widget.fields);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

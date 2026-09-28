@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Feedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
 import '../domain/state.dart';
 import '../engine/collections.dart';
@@ -78,7 +79,10 @@ class StateCollections extends StatelessWidget {
                   final f = entry.value[i];
                   return InkWell(
                     borderRadius: BorderRadius.circular(10),
-                    onTap: () => context.push(Routes.why(f.id)),
+                    onTap: () {
+                      context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': f.id, 'from': entry.key.name});
+                      context.push(Routes.why(f.id));
+                    },
                     child: Poster(f, width: 88, height: 128),
                   );
                 },

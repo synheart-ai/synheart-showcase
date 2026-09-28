@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
 import '../domain/state.dart';
 import '../engine/explain.dart';
@@ -49,61 +50,65 @@ class TonightScreen extends StatelessWidget {
       note = 'Taste only — the way a conventional recommender would.';
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Tonight's picks"),
-        actions: [
-          if (current != null && at != null)
-            TextButton.icon(
-              onPressed: () => context.push(Routes.state),
-              icon: const Icon(Icons.favorite, size: 16),
-              label: Text(ageLabel(at, cubit.now())),
-            ),
-        ],
-      ),
-      body: PageBody(
-        bottom: current == null
-            ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: Text(picks.isStale ? 'Check in again' : 'Add my current context'))
-            : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
-        children: [
-          SegmentedButton<RecommendationMode>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: RecommendationMode.tasteOnly, label: Text('BASED ON TASTE')),
-              ButtonSegment(value: RecommendationMode.tastePlusState, label: Text('TASTE + CURRENT STATE')),
-            ],
-            selected: {picks.mode},
-            onSelectionChanged: current == null ? null : (m) => cubit.setMode(m.first),
-          ),
-          const SizedBox(height: 14),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: picks.withState
-                ? Callout(
-                    key: const ValueKey('changed'),
-                    title: "Your preferences haven't changed.",
-                    child: Text('Your context has.${current!.source == StateSource.preset ? ' (Demo data — not a real check-in.)' : ''}'),
-                  )
-                : Callout(key: ValueKey(note), child: Text(note)),
-          ),
-          const SizedBox(height: 16),
-          const ChooseMyEvening(),
-          const SizedBox(height: 18),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            child: Column(
-              key: ValueKey('${picks.mode}-$current-${s.viewing}-${s.hiddenFilmIds.length}'),
-              children: [
-                for (final (i, r) in list.indexed) ...[
-                  _PickCard(rank: i + 1, recommendation: r, headline: picks.explanation(r).headline),
-                  const SizedBox(height: 12),
-                ],
-                if (list.isEmpty) const Callout(child: Text('Nothing fits these filters — try removing one.')),
+    return LogOnShow(
+      event: DemoEvent.recommendationsViewed,
+      fields: {'mode': picks.mode.name, 'stale': '${picks.isStale}'},
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Tonight's picks"),
+          actions: [
+            if (current != null && at != null)
+              TextButton.icon(
+                onPressed: () => context.push(Routes.state),
+                icon: const Icon(Icons.favorite, size: 16),
+                label: Text(ageLabel(at, cubit.now())),
+              ),
+          ],
+        ),
+        body: PageBody(
+          bottom: current == null
+              ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: Text(picks.isStale ? 'Check in again' : 'Add my current context'))
+              : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
+          children: [
+            SegmentedButton<RecommendationMode>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: RecommendationMode.tasteOnly, label: Text('BASED ON TASTE')),
+                ButtonSegment(value: RecommendationMode.tastePlusState, label: Text('TASTE + CURRENT STATE')),
               ],
+              selected: {picks.mode},
+              onSelectionChanged: current == null ? null : (m) => cubit.setMode(m.first),
             ),
-          ),
-          if (picks.withState) const StateCollections(),
-        ],
+            const SizedBox(height: 14),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: picks.withState
+                  ? Callout(
+                      key: const ValueKey('changed'),
+                      title: "Your preferences haven't changed.",
+                      child: Text('Your context has.${current!.source == StateSource.preset ? ' (Demo data — not a real check-in.)' : ''}'),
+                    )
+                  : Callout(key: ValueKey(note), child: Text(note)),
+            ),
+            const SizedBox(height: 16),
+            const ChooseMyEvening(),
+            const SizedBox(height: 18),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              child: Column(
+                key: ValueKey('${picks.mode}-$current-${s.viewing}-${s.hiddenFilmIds.length}'),
+                children: [
+                  for (final (i, r) in list.indexed) ...[
+                    _PickCard(rank: i + 1, recommendation: r, headline: picks.explanation(r).headline),
+                    const SizedBox(height: 12),
+                  ],
+                  if (list.isEmpty) const Callout(child: Text('Nothing fits these filters — try removing one.')),
+                ],
+              ),
+            ),
+            if (picks.withState) const StateCollections(),
+          ],
+        ),
       ),
     );
   }
@@ -123,7 +128,10 @@ class _PickCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push(Routes.why(f.id)),
+        onTap: () {
+          context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': f.id, 'from': 'picks', 'rank': '$rank'});
+          context.push(Routes.why(f.id));
+        },
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(

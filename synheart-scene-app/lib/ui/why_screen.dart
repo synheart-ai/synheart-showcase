@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
 import '../engine/recommender.dart';
 import 'picks.dart';
@@ -31,52 +32,56 @@ class WhyScreen extends StatelessWidget {
     final f = r.film;
     final w = r.weights;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Why this movie?')),
-      body: PageBody(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Poster(f, width: 96, height: 138),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(f.title, style: t.headlineSmall),
-                    const SizedBox(height: 4),
-                    Text('${f.year} · ${f.runtimeMinutes} min', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                    const SizedBox(height: 4),
-                    Text(f.genres.map((g) => g.label).join(' · '), style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                    const SizedBox(height: 10),
-                    Text(f.logline, style: t.bodyMedium),
-                  ],
+    return LogOnShow(
+      event: DemoEvent.explanationViewed,
+      fields: {'film': f.id, 'mode': picks.mode.name},
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Why this movie?')),
+        body: PageBody(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Poster(f, width: 96, height: 138),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(f.title, style: t.headlineSmall),
+                      const SizedBox(height: 4),
+                      Text('${f.year} · ${f.runtimeMinutes} min', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+                      const SizedBox(height: 4),
+                      Text(f.genres.map((g) => g.label).join(' · '), style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+                      const SizedBox(height: 10),
+                      Text(f.logline, style: t.bodyMedium),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Callout(title: r.fitLabel.toUpperCase(), child: Text(e.headline)),
-          const SizedBox(height: 20),
-          _Reason(icon: Icons.person_outline, title: 'Your taste', text: e.taste),
-          _Reason(
-            icon: Icons.favorite_border,
-            title: 'Right now',
-            text: e.rightNow ?? 'No check-in or choice of evening was used for this pick.',
-          ),
-          _Reason(icon: Icons.auto_awesome_outlined, title: 'How that affected this pick', text: e.effect),
-          const SizedBox(height: 12),
-          Text('What went into the ranking', style: t.titleLarge),
-          const SizedBox(height: 4),
-          Text('Weights are tunable defaults, not a validated formula.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-          const SizedBox(height: 12),
-          _Factor(label: 'Taste', weight: w.taste, value: r.taste),
-          if (w.usesState) _Factor(label: 'Right now (Synheart check-in)', weight: w.state, value: r.state),
-          if (w.usesContext) _Factor(label: 'Your choices for tonight', weight: w.context, value: r.context),
-          const SizedBox(height: 28),
-          FeedbackPanel(filmId: f.id),
-        ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            Callout(title: r.fitLabel.toUpperCase(), child: Text(e.headline)),
+            const SizedBox(height: 20),
+            _Reason(icon: Icons.person_outline, title: 'Your taste', text: e.taste),
+            _Reason(
+              icon: Icons.favorite_border,
+              title: 'Right now',
+              text: e.rightNow ?? 'No check-in or choice of evening was used for this pick.',
+            ),
+            _Reason(icon: Icons.auto_awesome_outlined, title: 'How that affected this pick', text: e.effect),
+            const SizedBox(height: 12),
+            Text('What went into the ranking', style: t.titleLarge),
+            const SizedBox(height: 4),
+            Text('Weights are tunable defaults, not a validated formula.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+            const SizedBox(height: 12),
+            _Factor(label: 'Taste', weight: w.taste, value: r.taste),
+            if (w.usesState) _Factor(label: 'Right now (Synheart check-in)', weight: w.state, value: r.state),
+            if (w.usesContext) _Factor(label: 'Your choices for tonight', weight: w.context, value: r.context),
+            const SizedBox(height: 28),
+            FeedbackPanel(filmId: f.id),
+          ],
+        ),
       ),
     );
   }

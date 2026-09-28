@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:synheart_behavior/synheart_behavior.dart';
 
+import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
 import '../app/synheart.dart';
 import '../data/demo_scenarios.dart';
@@ -51,7 +52,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
     super.dispose();
   }
 
+  DemoLog get _log => context.read<SceneCubit>().log;
+
   Future<void> _agree() async {
+    _log.record(DemoEvent.checkInConsented);
     setState(() => _phase = CheckInPhase.starting);
     // The native SDK is optional for the typing metrics (see SynheartService),
     // so a failure to start it does not block the check-in.
@@ -66,6 +70,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   void _skip() {
+    _log.record(DemoEvent.checkInSkipped, {'at': _phase.name});
     context.read<SceneCubit>().clearCurrentState();
     context.go(Routes.tonight);
   }
@@ -87,6 +92,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     try {
       state = stateFromTyping(_samples);
     } catch (e) {
+      _log.record(DemoEvent.checkInFailed);
       setState(() {
         _phase = CheckInPhase.failed;
         _failure = '$e';
@@ -94,15 +100,18 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return;
     }
     if (state == null) {
+      _log.record(DemoEvent.checkInInsufficientSignal, {'bursts': '${_samples.length}'});
       setState(() => _phase = CheckInPhase.insufficient);
       return;
     }
+    _log.record(DemoEvent.checkInSucceeded, {'nativeSdk': '${_synheart.behavior != null}'});
     _text.clear(); // Nothing the user wrote is kept.
     context.read<SceneCubit>().setCurrentState(state);
     context.go(Routes.state);
   }
 
   void _useDemo(DemoScenario d) {
+    _log.record(DemoEvent.demoScenarioUsed, {'scenario': d.name});
     context.read<SceneCubit>().setCurrentState(d.state);
     context.go(Routes.state);
   }
