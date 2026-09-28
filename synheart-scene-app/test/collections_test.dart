@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scene/data/demo_persona.dart';
 import 'package:scene/data/demo_scenarios.dart';
-import 'package:scene/domain/state.dart';
 import 'package:scene/engine/collections.dart';
 import 'package:scene/engine/taste_builder.dart';
 
