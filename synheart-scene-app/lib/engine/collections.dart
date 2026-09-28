@@ -49,3 +49,22 @@ Map<Collection, List<Film>> buildCollections(
     Collection.under90: top(pool.where((f) => f.runtimeMinutes <= 90), full),
   };
 }
+
+/// "Because you like Thriller" rows from taste alone, for the user's top
+/// genres — the browse rows when no current state is in use. Films already
+/// in [exclude] (tonight's top list) are left out for variety.
+List<(Genre, List<Film>)> tasteRows(
+  TasteProfile p, {
+  Set<String> hidden = const {},
+  Set<String> exclude = const {},
+  ViewingContext context = const ViewingContext(),
+  Recommender engine = const Recommender(),
+  int rows = 2,
+  int perRow = 8,
+}) {
+  final ranked = engine.recommend(p, context: context, mode: RecommendationMode.tasteOnly, limit: null, hidden: hidden);
+  return [
+    for (final g in p.rankedGenres.take(rows).map((e) => e.key))
+      (g, ranked.where((r) => r.film.genres.contains(g) && !exclude.contains(r.film.id)).take(perRow).map((r) => r.film).toList()),
+  ];
+}

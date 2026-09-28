@@ -8,15 +8,17 @@ import '../domain/state.dart';
 import '../engine/explain.dart';
 import '../engine/recommender.dart';
 import 'picks.dart';
-import 'poster.dart';
+import 'home_rows.dart';
 import 'routes.dart';
 import 'state_sheet.dart';
 import 'theme.dart';
 import 'tonight_extras.dart';
 import 'widgets.dart';
 
-/// Screen 6 — Tonight's Picks, with the key demo toggle (screen 8):
-/// BASED ON TASTE ⇄ TASTE + CURRENT STATE (plan §5, §6).
+/// The home screen — Tonight's Picks as a browse home (a state-aware
+/// Netflix, as Resona is a state-aware Spotify): the top pick, tonight's top
+/// list and browse rows, under the key demo toggle BASED ON TASTE ⇄ TASTE +
+/// CURRENT STATE (plan §5, §6).
 class TonightScreen extends StatelessWidget {
   const TonightScreen({super.key});
 
@@ -58,8 +60,11 @@ class TonightScreen extends StatelessWidget {
       fields: {'mode': picks.mode.name, 'stale': '${picks.isStale}'},
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("Tonight's picks"),
-          actions: const [Padding(padding: EdgeInsets.only(right: 12), child: StatePill())],
+          title: const Text('Scene'),
+          actions: [
+            IconButton(tooltip: 'Movie DNA', icon: const Icon(Icons.person_outline), onPressed: () => context.push(Routes.dna)),
+            const Padding(padding: EdgeInsets.only(right: 12), child: StatePill()),
+          ],
         ),
         body: PageBody(
           bottom: !picks.hasUsableState
@@ -78,8 +83,8 @@ class TonightScreen extends StatelessWidget {
               ],
               selected: {picks.mode},
               // Only the state segment is disabled without a usable reading, so
-            // the active one keeps full contrast.
-            onSelectionChanged: (m) => cubit.setMode(m.first),
+              // the active one keeps full contrast.
+              onSelectionChanged: (m) => cubit.setMode(m.first),
             ),
             const SizedBox(height: 14),
             AnimatedSwitcher(
@@ -93,76 +98,28 @@ class TonightScreen extends StatelessWidget {
                   : Callout(key: ValueKey(note), child: Text(note)),
             ),
             const SizedBox(height: 16),
-            const ChooseMyEvening(),
-            const SizedBox(height: 18),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 350),
               child: Column(
                 key: ValueKey('${picks.mode}-$current-${s.viewing}-${s.hiddenFilmIds.length}'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final (i, r) in list.indexed) ...[
-                    _PickCard(rank: i + 1, recommendation: r, headline: picks.explanation(r).headline),
-                    const SizedBox(height: 12),
+                  if (list.isEmpty)
+                    const Callout(child: Text('Nothing fits these filters — try removing one.'))
+                  else ...[
+                    HeroPick(recommendation: list.first, headline: picks.explanation(list.first).headline),
+                    const SizedBox(height: 22),
+                    Text("Tonight's top ${list.length}", style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    TopRow(picks: list),
                   ],
-                  if (list.isEmpty) const Callout(child: Text('Nothing fits these filters — try removing one.')),
                 ],
               ),
             ),
-            if (picks.withState) const StateCollections(),
+            const SizedBox(height: 22),
+            const ChooseMyEvening(),
+            BrowseRows(withState: picks.withState, exclude: {for (final r in list) r.film.id}),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PickCard extends StatelessWidget {
-  const _PickCard({required this.rank, required this.recommendation, required this.headline});
-
-  final int rank;
-  final Recommendation recommendation;
-  final String headline;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final f = recommendation.film;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': f.id, 'from': 'picks', 'rank': '$rank'});
-          context.push(Routes.why(f.id));
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Poster(f),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Expanded(child: Text(f.title, style: t.titleLarge)),
-                      Text('#$rank', style: t.labelSmall),
-                    ]),
-                    const SizedBox(height: 2),
-                    Text(recommendation.fitLabel, style: t.bodyMedium?.copyWith(color: SceneColors.accent, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('${f.year} · ${f.runtimeMinutes} min · ${f.genres.take(2).map((g) => g.label).join(' · ')}',
-                        style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                    const SizedBox(height: 8),
-                    Text(headline, style: t.bodyMedium),
-                    const SizedBox(height: 8),
-                    Text('Why this movie? →', style: t.bodyMedium?.copyWith(color: SceneColors.ink, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

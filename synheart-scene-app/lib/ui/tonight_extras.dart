@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart' hide Feedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
-import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
 import '../domain/state.dart';
-import '../engine/collections.dart';
-import 'poster.dart';
-import 'routes.dart';
 import 'theme.dart';
 
 /// "Choose My Evening" — explicit intent plus the 90-minute filter, in both
@@ -42,57 +37,6 @@ class ChooseMyEvening extends StatelessWidget {
             ),
           ],
         ),
-      ],
-    );
-  }
-}
-
-/// The state-aware collections as horizontal rows of posters (§7).
-class StateCollections extends StatelessWidget {
-  const StateCollections({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final s = context.watch<SceneCubit>().state;
-    final profile = s.profile;
-    final current = context.read<SceneCubit>().freshState;
-    if (profile == null || current == null) return const SizedBox.shrink();
-
-    final collections = buildCollections(profile, state: current, context: s.viewing, hidden: s.hiddenFilmIds);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final entry in collections.entries)
-          if (entry.value.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            Text(entry.key.title, style: t.titleLarge),
-            Text(entry.key.subtitle, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 128,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: entry.value.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (_, i) {
-                  final f = entry.value[i];
-                  return Semantics(
-                    button: true,
-                    label: '${f.title}, ${f.year}. Why this movie?',
-                    child: InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () {
-                      context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': f.id, 'from': entry.key.name});
-                      context.push(Routes.why(f.id));
-                    },
-                    child: Poster(f, width: 88, height: 128),
-                  ),
-                  );
-                },
-              ),
-            ),
-          ],
       ],
     );
   }

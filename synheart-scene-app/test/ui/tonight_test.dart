@@ -81,7 +81,7 @@ void main() {
     expect(find.text("Your preferences haven't changed."), findsOneWidget);
 
     now = now.add(const Duration(hours: 3));
-    await tester.tap(find.text('90 minutes or less')); // any rebuild
+    await tester.tap(find.text('BASED ON TASTE')); // any rebuild
     await tester.pumpAndSettle();
     expect(find.textContaining('Taste only. Your last reading, from 3 h ago, is too old to use'), findsOneWidget);
     expect(find.text("Your preferences haven't changed."), findsNothing);
@@ -90,10 +90,18 @@ void main() {
 
   testWidgets('an explicit intent works in taste-only mode too, and is named in the reason (RFC §9.6)', (tester) async {
     await toTonight(tester);
+    final page = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    await tester.scrollUntilVisible(find.text('Help me unwind'), 300, scrollable: page);
+    await tester.ensureVisible(find.text('Help me unwind'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Help me unwind'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('#1'));
+    await tester.scrollUntilVisible(find.text('#1 TONIGHT'), -300, scrollable: page);
+    await tester.ensureVisible(find.text('#1 TONIGHT'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('#1 TONIGHT'));
+    await tester.pumpAndSettle();
+    expect(find.text('Why this movie?'), findsOneWidget);
     expect(find.text('You chose "Help me unwind".'), findsOneWidget);
     expect(find.textContaining('Ranked on taste (70%) and your choice of evening (30%)'), findsOneWidget);
   });
@@ -103,11 +111,13 @@ void main() {
     final page = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
     await tester.tap(find.text('TASTE + CURRENT STATE'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Choose my evening'), 300, scrollable: page);
     expect(find.text('Choose my evening'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Because you want to switch off'), 300, scrollable: page);
     expect(find.text('Because you want to switch off'), findsOneWidget);
 
     // "Wrong for me" on Knives Out drops it from tonight's list.
+    await tester.scrollUntilVisible(find.textContaining("Tonight's top"), -300, scrollable: page);
     await tester.ensureVisible(pickCard('Knives Out'));
     await tester.pumpAndSettle();
     await tester.tap(pickCard('Knives Out'));
