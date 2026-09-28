@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/scene_cubit.dart';
+import '../domain/state.dart';
+import '../engine/explain.dart';
 import '../engine/recommender.dart';
 import 'picks.dart';
 import 'poster.dart';
@@ -31,25 +33,38 @@ class TonightScreen extends StatelessWidget {
       );
     }
 
-    final picks = picksFor(s);
-    final withState = s.mode == RecommendationMode.tastePlusState && s.current != null;
+    final picks = Picks.of(cubit);
+    final list = picks.list();
+    final current = picks.state;
+    final at = s.current?.capturedAt;
+
+    final String note;
+    if (picks.withState) {
+      note = '';
+    } else if (picks.isStale) {
+      note = 'Taste only. Your check-in from ${ageLabel(at!, cubit.now())} is too old to use — check in again to see what fits right now.';
+    } else if (current == null) {
+      note = 'Taste only. No check-in was used — do one to see what fits right now.';
+    } else {
+      note = 'Taste only — the way a conventional recommender would.';
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Tonight's picks"),
         actions: [
-          if (s.current != null)
+          if (current != null && at != null)
             TextButton.icon(
-              onPressed: () => context.go(Routes.state),
+              onPressed: () => context.push(Routes.state),
               icon: const Icon(Icons.favorite, size: 16),
-              label: Text(s.current!.suggestedExperience.label),
+              label: Text(ageLabel(at, cubit.now())),
             ),
         ],
       ),
       body: PageBody(
-        bottom: s.current == null
-            ? FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Add my current state'))
-            : OutlinedButton(onPressed: () => context.go(Routes.compare), child: const Text('What changed? Compare side by side')),
+        bottom: current == null
+            ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: Text(picks.isStale ? 'Check in again' : 'Add my current context'))
+            : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
         children: [
           SegmentedButton<RecommendationMode>(
             showSelectedIcon: false,
@@ -57,40 +72,37 @@ class TonightScreen extends StatelessWidget {
               ButtonSegment(value: RecommendationMode.tasteOnly, label: Text('BASED ON TASTE')),
               ButtonSegment(value: RecommendationMode.tastePlusState, label: Text('TASTE + CURRENT STATE')),
             ],
-            selected: {s.current == null ? RecommendationMode.tasteOnly : s.mode},
-            onSelectionChanged: s.current == null ? null : (m) => cubit.setMode(m.first),
+            selected: {picks.mode},
+            onSelectionChanged: current == null ? null : (m) => cubit.setMode(m.first),
           ),
           const SizedBox(height: 14),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
-            child: withState
-                ? const Callout(key: ValueKey('changed'), title: "Your preferences haven't changed.", child: Text('Your context has.'))
-                : Callout(
-                    key: const ValueKey('taste'),
-                    child: Text(s.current == null
-                        ? 'Picked on your taste alone. Do a Synheart check-in to see what fits right now.'
-                        : 'Picked on your taste alone — the way a conventional recommender would.'),
-                  ),
+            child: picks.withState
+                ? Callout(
+                    key: const ValueKey('changed'),
+                    title: "Your preferences haven't changed.",
+                    child: Text('Your context has.${current!.source == StateSource.preset ? ' (Demo data — not a real check-in.)' : ''}'),
+                  )
+                : Callout(key: ValueKey(note), child: Text(note)),
           ),
-          if (withState) ...[
-            const SizedBox(height: 16),
-            const ChooseMyEvening(),
-          ],
+          const SizedBox(height: 16),
+          const ChooseMyEvening(),
           const SizedBox(height: 18),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 350),
             child: Column(
-              key: ValueKey('${s.mode}-${s.current}-${s.viewing}'),
+              key: ValueKey('${picks.mode}-$current-${s.viewing}-${s.hiddenFilmIds.length}'),
               children: [
-                for (final (i, r) in picks.indexed) ...[
-                  _PickCard(rank: i + 1, recommendation: r, headline: explanationFor(s, r).headline),
+                for (final (i, r) in list.indexed) ...[
+                  _PickCard(rank: i + 1, recommendation: r, headline: picks.explanation(r).headline),
                   const SizedBox(height: 12),
                 ],
-                if (picks.isEmpty) const Callout(child: Text('Nothing fits these filters — try removing one.')),
+                if (list.isEmpty) const Callout(child: Text('Nothing fits these filters — try removing one.')),
               ],
             ),
           ),
-          if (withState) const StateCollections(),
+          if (picks.withState) const StateCollections(),
         ],
       ),
     );
@@ -127,6 +139,8 @@ class _PickCard extends StatelessWidget {
                       Expanded(child: Text(f.title, style: t.titleLarge)),
                       Text('#$rank', style: t.labelSmall),
                     ]),
+                    const SizedBox(height: 2),
+                    Text(recommendation.fitLabel, style: t.bodyMedium?.copyWith(color: SceneColors.accent, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
                     Text('${f.year} · ${f.runtimeMinutes} min · ${f.genres.take(2).map((g) => g.label).join(' · ')}',
                         style: t.bodyMedium?.copyWith(color: SceneColors.sage)),

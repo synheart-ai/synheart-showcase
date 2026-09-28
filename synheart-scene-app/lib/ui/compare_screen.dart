@@ -3,37 +3,43 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/scene_cubit.dart';
+import '../domain/state.dart';
 import '../engine/recommender.dart';
 import 'picks.dart';
 import 'routes.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-/// Screen 8 — "What changed?": taste-only and taste + state side by side, as
-/// in the plan's table (§6), with the demo line and the closing message.
+/// Screen 8 — "What changed?": the same eligible catalogue ranked on taste
+/// only and on taste + current state, with each film's movement and why
+/// (RFC §4.8, §9.5). A result with no meaningful change says so (RFC §10).
 class CompareScreen extends StatelessWidget {
   const CompareScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final s = context.watch<SceneCubit>().state;
+    context.watch<SceneCubit>();
+    final picks = Picks.of(context.read<SceneCubit>());
+    final c = picks.compare();
 
-    if (s.profile == null || s.current == null) {
+    if (c == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('What changed?')),
         body: PageBody(
-          bottom: FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Do my check-in')),
-          children: const [Callout(child: Text('Scene needs your baseline and a check-in to compare.'))],
+          bottom: FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Do my check-in')),
+          children: [
+            Callout(
+              child: Text(picks.isStale
+                  ? 'Your check-in is too old to compare with. Check in again to see what fits right now.'
+                  : 'Scene needs your baseline and a fresh check-in to compare.'),
+            ),
+          ],
         ),
       );
     }
 
-    final taste = picksFor(s, mode: RecommendationMode.tasteOnly);
-    final withState = picksFor(s, mode: RecommendationMode.tastePlusState);
-    final tasteIds = taste.map((r) => r.film.id).toSet();
-    final rows = taste.length > withState.length ? taste.length : withState.length;
-
+    final demo = picks.state!.source == StateSource.preset;
     return Scaffold(
       appBar: AppBar(title: const Text('What changed?')),
       body: PageBody(
@@ -45,51 +51,99 @@ class CompareScreen extends StatelessWidget {
           child: const Text('Watch with my current state'),
         ),
         children: [
-          Text('BASED ON TASTE  ⇄  TASTE + CURRENT STATE', style: t.labelSmall, textAlign: TextAlign.center),
-          const SizedBox(height: 14),
-          Table(
-            border: const TableBorder(horizontalInside: BorderSide(color: SceneColors.line)),
-            children: [
-              TableRow(
-                decoration: const BoxDecoration(color: SceneColors.panel),
-                children: [
-                  _cell(context, 'Taste only', header: true),
-                  _cell(context, 'Taste + current state', header: true),
-                ],
-              ),
-              for (var i = 0; i < rows; i++)
-                TableRow(children: [
-                  _cell(context, i < taste.length ? taste[i].film.title : ''),
-                  _cell(context, i < withState.length ? withState[i].film.title : '', isNew: i < withState.length && !tasteIds.contains(withState[i].film.id)),
-                ]),
-            ],
-          ),
+          if (demo) ...[
+            const Eyebrow('Demo data — not a real check-in'),
+            const SizedBox(height: 8),
+          ],
+          Text('Taste only', style: t.titleLarge),
           const SizedBox(height: 8),
-          Row(children: [
-            const Icon(Icons.fiber_new_outlined, size: 18, color: SceneColors.warm),
-            const SizedBox(width: 6),
-            Expanded(child: Text('new tonight because of your current state', style: t.bodyMedium?.copyWith(color: SceneColors.sage))),
-          ]),
+          for (final (i, r) in c.tasteOnly.indexed)
+            _Row(rank: i + 1, title: r.film.title, note: c.dropped.any((d) => d.film.id == r.film.id) ? 'Drops out tonight' : null),
+          const SizedBox(height: 18),
+          Text('Taste + current state', style: t.titleLarge),
+          const SizedBox(height: 8),
+          for (final change in c.changes)
+            _Row(
+              rank: change.after!,
+              title: change.film.title,
+              badge: _badge(change, c.tasteOnly.length),
+              note: _why(picks, change),
+              onTap: () => context.push(Routes.why(change.film.id)),
+            ),
           const SizedBox(height: 20),
-          const Callout(title: 'Demo line', child: Text("Your preferences haven't changed. Your context has.")),
-          const SizedBox(height: 12),
-          const Callout(
-            title: 'Closing message',
-            child: Text('Synheart adds the missing context between what a person generally prefers and what may fit their present moment.'),
-          ),
+          if (c.isMeaningful) ...[
+            const Callout(title: 'Demo line', child: Text("Your preferences haven't changed. Your context has.")),
+            const SizedBox(height: 12),
+            const Callout(
+              title: 'Closing message',
+              child: Text('Synheart adds the missing context between what a person generally prefers and what may fit their present moment.'),
+            ),
+          ] else
+            const Callout(
+              title: 'No meaningful change tonight',
+              child: Text(
+                'Your current context points the same way as your taste, so the same films lead. '
+                'That is a real result, not a failure — Scene does not force a change.',
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _cell(BuildContext context, String text, {bool header = false, bool isNew = false}) {
+  /// "↑ from #11", "new", "↓ 1", "=".
+  static String _badge(RankChange c, int shown) {
+    final before = c.before;
+    if (before == null) return 'new';
+    if (before > shown) return '↑ from #$before';
+    if (c.moved > 0) return '↑ ${c.moved}';
+    if (c.moved < 0) return '↓ ${-c.moved}';
+    return '=';
+  }
+
+  /// Why it moved, from its contribution record.
+  static String? _why(Picks picks, RankChange c) {
+    final r = picks.score(c.film.id);
+    if (r == null || c.moved <= 0) return null;
+    return '${supportLabel(r.state)} fit for right now · ${supportLabel(r.taste).toLowerCase()} on taste';
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.rank, required this.title, this.badge, this.note, this.onTap});
+
+  final int rank;
+  final String title;
+  final String? badge;
+  final String? note;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      child: Row(children: [
-        Expanded(child: Text(text, style: header ? t.titleMedium : t.bodyLarge)),
-        if (isNew) const Icon(Icons.fiber_new_outlined, size: 18, color: SceneColors.warm),
-      ]),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SceneColors.line))),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 32, child: Text('#$rank', style: t.labelSmall)),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: t.bodyLarge),
+                if (note != null) Text(note!, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+              ]),
+            ),
+            if (badge != null)
+              Text(
+                badge!,
+                style: t.titleMedium?.copyWith(color: badge!.startsWith('↑') || badge == 'new' ? SceneColors.warm : SceneColors.sage),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

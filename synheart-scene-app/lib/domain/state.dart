@@ -21,16 +21,25 @@ enum Level {
 
 /// The kind of experience that fits the current moment.
 enum Experience {
-  unwind('Unwind', 'looking to unwind'),
-  stayEngaged('Stay engaged', 'up for something engaging'),
-  liftMe('Lift me up', 'ready for something lively'),
-  easyWatch('Easy watch', 'after something easy');
+  unwind('Unwind', 'a good evening to unwind'),
+  stayEngaged('Stay engaged', 'a good evening for something engaging'),
+  liftMe('Lift me up', 'a good evening for something lively'),
+  easyWatch('Easy watch', 'a good evening for an easy watch');
 
   const Experience(this.label, this.phrase);
   final String label;
 
-  /// Lower-case phrase for sentences ("You seem to be looking to unwind").
+  /// Tentative phrase for sentences — "This may be a good evening to unwind",
+  /// never "You are stressed" (RFC §8).
   final String phrase;
+
+  /// The viewing intent this suggests, which the user can accept, change or
+  /// skip on the Current context screen (RFC §4.5).
+  EveningIntent get suggestedIntent => switch (this) {
+        Experience.unwind => EveningIntent.unwind,
+        Experience.stayEngaged => EveningIntent.engaging,
+        Experience.liftMe || Experience.easyWatch => EveningIntent.entertain,
+      };
 }
 
 /// Where the state came from — shown so the demo stays honest.

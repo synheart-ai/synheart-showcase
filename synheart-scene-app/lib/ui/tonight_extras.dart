@@ -9,8 +9,8 @@ import 'poster.dart';
 import 'routes.dart';
 import 'theme.dart';
 
-/// "Choose My Evening" — explicit intent plus the 90-minute filter. Synheart
-/// is an input to personalisation, not a replacement for user choice (§7).
+/// "Choose My Evening" — explicit intent plus the 90-minute filter, in both
+/// modes. The user's choice takes precedence over the check-in (RFC §4).
 class ChooseMyEvening extends StatelessWidget {
   const ChooseMyEvening({super.key});
 
@@ -55,7 +55,7 @@ class StateCollections extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final s = context.watch<SceneCubit>().state;
     final profile = s.profile;
-    final current = s.current;
+    final current = context.read<SceneCubit>().freshState;
     if (profile == null || current == null) return const SizedBox.shrink();
 
     final collections = buildCollections(profile, state: current, context: s.viewing, hidden: s.hiddenFilmIds);

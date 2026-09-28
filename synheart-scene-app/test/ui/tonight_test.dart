@@ -6,74 +6,114 @@ import 'package:scene/main.dart';
 import 'helpers.dart';
 
 void main() {
-  Future<void> toTonight(WidgetTester tester) async {
+  Future<void> toTonight(WidgetTester tester, {String scenario = 'Busy day', DateTime Function()? clock}) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable()));
+    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable(), clock: clock));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start my Synheart check-in'));
     await tester.pumpAndSettle();
-    await tapDemo(tester, 'Busy day');
+    await tapDemo(tester, scenario);
     await tester.pumpAndSettle();
     await tester.tap(find.text("See tonight's picks"));
     await tester.pumpAndSettle();
   }
 
+  Finder pickCard(String title) => find.descendant(of: find.byType(Card), matching: find.text(title)).first;
+
   testWidgets('the live demo story: taste first, then toggle, then why', (tester) async {
     await toTonight(tester);
 
-    // Starts on taste only.
-    expect(find.text('Se7en'), findsWidgets);
-    expect(find.textContaining('Picked on your taste alone'), findsOneWidget);
+    // Starts on taste only, and says so.
+    expect(pickCard('Se7en'), findsOneWidget);
+    expect(find.text('Taste only — the way a conventional recommender would.'), findsOneWidget);
+    expect(find.text('Strong fit for your taste'), findsWidgets);
 
-    // Toggle Synheart on: the list changes, the demo line appears.
+    // Toggle Synheart on: the list changes, the demo line appears, demo data is labelled.
     await tester.tap(find.text('TASTE + CURRENT STATE'));
     await tester.pumpAndSettle();
     expect(find.text("Your preferences haven't changed."), findsOneWidget);
-    expect(find.text('Se7en'), findsNothing);
-    expect(find.text('Knives Out'), findsWidgets);
+    expect(find.textContaining('Demo data — not a real check-in'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Card), matching: find.text('Se7en')), findsNothing);
+    expect(find.text('Strong fit for tonight'), findsWidgets);
 
-    // Why this movie?
-    await tester.ensureVisible(find.text('Knives Out').last);
+    // Why this movie? — the RFC's three parts, no percentage match.
+    await tester.ensureVisible(pickCard('Knives Out'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Knives Out').last);
+    await tester.tap(pickCard('Knives Out'));
     await tester.pumpAndSettle();
     expect(find.text('Why this movie?'), findsOneWidget);
-    expect(find.text('Your baseline'), findsOneWidget);
-    expect(find.text('Your current context'), findsOneWidget);
-    await tester.scrollUntilVisible(find.textContaining('State fit (Synheart)'), 200);
-    expect(find.textContaining('State fit (Synheart)'), findsOneWidget);
+    expect(find.text('Your taste'), findsOneWidget);
+    expect(find.text('Right now'), findsOneWidget);
+    expect(find.textContaining('The demo data suggests this may be'), findsOneWidget);
+    await tester.dragUntilVisible(find.textContaining('On taste alone it was #'), find.byType(ListView).last, const Offset(0, -200));
+    expect(find.text('How that affected this pick'), findsOneWidget);
+    expect(find.textContaining('On taste alone it was #'), findsOneWidget);
   });
 
-  testWidgets('What changed? shows both lists side by side', (tester) async {
+  testWidgets('What changed? shows movement and the demo line for a meaningful change', (tester) async {
     await toTonight(tester);
     await tester.tap(find.text('What changed? Compare side by side'));
     await tester.pumpAndSettle();
     expect(find.text('Taste only'), findsOneWidget);
     expect(find.text('Taste + current state'), findsOneWidget);
-    expect(find.text('Se7en'), findsWidgets);
-    expect(find.text('Knives Out'), findsWidgets);
+    expect(find.text('Drops out tonight'), findsWidgets);
+    expect(find.textContaining('↑ from #'), findsWidgets);
+    await tester.scrollUntilVisible(find.text("Your preferences haven't changed. Your context has."), 200,
+        scrollable: find.byType(Scrollable).last);
     expect(find.text("Your preferences haven't changed. Your context has."), findsOneWidget);
   });
 
-  testWidgets('Choose My Evening and collections appear with the current state; feedback hides a film', (tester) async {
+  testWidgets('a no-change scenario is explained honestly, not forced (RFC §10)', (tester) async {
+    await toTonight(tester, scenario: 'Rested');
+    await tester.tap(find.text('What changed? Compare side by side'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('No meaningful change tonight'), 200, scrollable: find.byType(Scrollable).last);
+    expect(find.text('No meaningful change tonight'), findsOneWidget);
+    expect(find.text("Your preferences haven't changed. Your context has."), findsNothing);
+  });
+
+  testWidgets('a stale check-in falls back to taste only and offers a new one (RFC §8)', (tester) async {
+    var now = DateTime(2026, 9, 28, 19);
+    await toTonight(tester, clock: () => now);
+    await tester.tap(find.text('TASTE + CURRENT STATE'));
+    await tester.pumpAndSettle();
+    expect(find.text("Your preferences haven't changed."), findsOneWidget);
+
+    now = now.add(const Duration(hours: 3));
+    await tester.tap(find.text('90 minutes or less')); // any rebuild
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Taste only. Your check-in from 3 h ago is too old to use'), findsOneWidget);
+    expect(find.text("Your preferences haven't changed."), findsNothing);
+    expect(find.text('Check in again'), findsOneWidget);
+  });
+
+  testWidgets('an explicit intent works in taste-only mode too, and is named in the reason (RFC §9.6)', (tester) async {
+    await toTonight(tester);
+    await tester.tap(find.text('Help me unwind'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('#1'));
+    await tester.pumpAndSettle();
+    expect(find.text('You chose "Help me unwind".'), findsOneWidget);
+    expect(find.textContaining('Ranked on taste (70%) and your choice of evening (30%)'), findsOneWidget);
+  });
+
+  testWidgets('collections appear with the current state; feedback hides a film', (tester) async {
     await toTonight(tester);
     final page = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
     await tester.tap(find.text('TASTE + CURRENT STATE'));
     await tester.pumpAndSettle();
     expect(find.text('Choose my evening'), findsOneWidget);
-    expect(find.text('90 minutes or less'), findsWidgets);
     await tester.scrollUntilVisible(find.text('Because you want to switch off'), 300, scrollable: page);
     expect(find.text('Because you want to switch off'), findsOneWidget);
 
     // "Wrong for me" on Knives Out drops it from tonight's list.
-    final card = find.descendant(of: find.byType(Card), matching: find.text('Knives Out')).first;
-    await tester.ensureVisible(card);
+    await tester.ensureVisible(pickCard('Knives Out'));
     await tester.pumpAndSettle();
-    await tester.tap(card);
+    await tester.tap(pickCard('Knives Out'));
     await tester.pumpAndSettle();
     expect(find.text('Why this movie?'), findsOneWidget);
     await tester.dragUntilVisible(find.text('Wrong for me'), find.byType(ListView).last, const Offset(0, -300));
@@ -85,6 +125,6 @@ void main() {
     expect(find.text('Anything specific? (optional)'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(find.text('Knives Out'), findsNothing);
+    expect(find.descendant(of: find.byType(Card), matching: find.text('Knives Out')), findsNothing);
   });
 }

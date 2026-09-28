@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../app/scene_cubit.dart';
 import '../domain/state.dart';
+import '../engine/explain.dart';
 import 'routes.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-/// Screen 5 — Current State: signals in simple, non-clinical language, with
-/// the user in control of the final picture (plan §4, UX guardrail).
+/// Screen 5 — Current context: provisional, non-clinical labels with the
+/// check-in time, and a suggested viewing intent the user can accept, change
+/// or skip (RFC §4.5, §6).
 class StateScreen extends StatelessWidget {
   const StateScreen({super.key});
 
@@ -21,7 +23,7 @@ class StateScreen extends StatelessWidget {
 
     if (current == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Your current state')),
+        appBar: AppBar(title: const Text('Your current context')),
         body: PageBody(
           bottom: FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Start my check-in')),
           children: const [Callout(child: Text('Do a quick Synheart check-in first.'))],
@@ -30,21 +32,35 @@ class StateScreen extends StatelessWidget {
     }
 
     void adjust(CurrentState s) => cubit.setCurrentState(s.copyWith(source: StateSource.adjusted));
+    final viewing = context.select((SceneCubit c) => c.state.viewing);
+    final suggested = current.suggestedExperience.suggestedIntent;
+    final at = current.capturedAt;
+    final stale = current.isStaleAt(cubit.now());
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your current state')),
+      appBar: AppBar(title: const Text('Your current context')),
       body: PageBody(
-        bottom: FilledButton(onPressed: () => context.go(Routes.tonight), child: const Text("See tonight's picks")),
+        bottom: FilledButton(onPressed: () => context.push(Routes.tonight), child: const Text("See tonight's picks")),
         children: [
           Eyebrow(current.source.label),
-          const SizedBox(height: 6),
-          Text('You seem to be ${current.suggestedExperience.phrase}.', style: t.headlineSmall),
+          if (at != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Checked in at ${_hhmm(at)} · ${ageLabel(at, cubit.now())}${stale ? ' — too old to use' : ''}',
+              style: t.bodyMedium?.copyWith(color: stale ? SceneColors.warm : SceneColors.sage),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text('This may be ${current.suggestedExperience.phrase}.', style: t.headlineSmall),
           const SizedBox(height: 20),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Signals from typing — provisional labels', style: t.labelSmall),
+                  const SizedBox(height: 14),
                   _SignalRow(
                     label: 'Energy',
                     level: current.energyLevel,
@@ -62,33 +78,51 @@ class StateScreen extends StatelessWidget {
                     level: current.engagementLevel,
                     onChanged: (l) => adjust(current.copyWith(engagement: l.value)),
                   ),
-                  const Divider(height: 28),
-                  Row(
-                    children: [
-                      Expanded(child: Text('Suggested experience', style: t.titleMedium)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: SceneColors.panel, borderRadius: BorderRadius.circular(20)),
-                        child: Text(current.suggestedExperience.label, style: t.titleMedium),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
           ),
+          const SizedBox(height: 22),
+          Text('What kind of evening?', style: t.titleLarge),
+          const SizedBox(height: 4),
+          Text(
+            'Suggested: ${suggested.label}. Your choice always wins over the suggestion — or skip it.',
+            style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final intent in EveningIntent.values)
+                ChoiceChip(
+                  label: Text(intent == suggested ? '${intent.label} (suggested)' : intent.label),
+                  selected: viewing.intent == intent,
+                  onSelected: (on) => cubit.setIntent(on ? intent : null),
+                ),
+              ChoiceChip(
+                label: const Text('No preference'),
+                selected: viewing.intent == null,
+                onSelected: (_) => cubit.setIntent(null),
+              ),
+            ],
+          ),
           const SizedBox(height: 18),
           const Callout(
             child: Text(
-              'These are contextual signals from how you typed — not a diagnosis. '
-              'Tap a level to change anything that does not feel right; you always make the final choice.',
+              'Energy, mental load and engagement are Scene\'s provisional reading of your typing rhythm — '
+              'not validated measures, and not a diagnosis. Tap a level to change anything that does not feel right.',
             ),
           ),
+          const SizedBox(height: 12),
+          TextButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Check in again')),
         ],
       ),
     );
   }
 }
+
+String _hhmm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
 class _SignalRow extends StatelessWidget {
   const _SignalRow({required this.label, required this.level, required this.onChanged});

@@ -9,8 +9,8 @@ import 'theme.dart';
 import 'tonight_extras.dart';
 import 'widgets.dart';
 
-/// Screen 7 — Why This Movie?: how the baseline and the current state shaped
-/// the pick, with the score split into the plan's three inputs (plan §5, §8).
+/// Screen 7 — Why This Movie?: *Your taste*, *Right now* and *How that
+/// affected this pick*, all from the film's contribution record (RFC §8).
 class WhyScreen extends StatelessWidget {
   const WhyScreen({super.key, required this.filmId});
 
@@ -19,16 +19,17 @@ class WhyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final s = context.watch<SceneCubit>().state;
-    final r = scoreFor(s, filmId);
+    context.watch<SceneCubit>();
+    final picks = Picks.of(context.read<SceneCubit>());
+    final r = picks.score(filmId);
 
     if (r == null) {
       return Scaffold(appBar: AppBar(), body: const PageBody(children: [Callout(child: Text('That film is not in tonight\'s list.'))]));
     }
 
-    final e = explanationFor(s, r);
+    final e = picks.explanation(r, withRank: true);
     final f = r.film;
-    final withState = s.mode == RecommendationMode.tastePlusState && s.current != null;
+    final w = r.weights;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Why this movie?')),
@@ -56,24 +57,23 @@ class WhyScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Callout(title: f.title.toUpperCase(), child: Text(e.headline)),
+          Callout(title: r.fitLabel.toUpperCase(), child: Text(e.headline)),
           const SizedBox(height: 20),
-          _Reason(icon: Icons.person_outline, title: 'Your baseline', text: e.baseline),
-          if (e.context != null) _Reason(icon: Icons.favorite_border, title: 'Your current context', text: e.context!),
-          _Reason(icon: Icons.auto_awesome_outlined, title: 'The recommendation', text: e.recommendation),
+          _Reason(icon: Icons.person_outline, title: 'Your taste', text: e.taste),
+          _Reason(
+            icon: Icons.favorite_border,
+            title: 'Right now',
+            text: e.rightNow ?? 'No check-in or choice of evening was used for this pick.',
+          ),
+          _Reason(icon: Icons.auto_awesome_outlined, title: 'How that affected this pick', text: e.effect),
           const SizedBox(height: 12),
-          Text('How the match was scored', style: t.titleLarge),
+          Text('What went into the ranking', style: t.titleLarge),
+          const SizedBox(height: 4),
+          Text('Weights are tunable defaults, not a validated formula.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
           const SizedBox(height: 12),
-          _ScoreBar(label: 'Taste match', weight: withState ? '50%' : '100%', value: r.taste),
-          if (withState) ...[
-            _ScoreBar(label: 'State fit (Synheart)', weight: '35%', value: r.state),
-            _ScoreBar(label: 'Context fit', weight: '15%', value: r.context),
-          ],
-          const Divider(height: 28),
-          Row(children: [
-            Expanded(child: Text('Overall match', style: t.titleMedium)),
-            Flexible(child: Text(r.fitLabel, style: t.titleMedium, textAlign: TextAlign.end)),
-          ]),
+          _Factor(label: 'Taste', weight: w.taste, value: r.taste),
+          if (w.usesState) _Factor(label: 'Right now (Synheart check-in)', weight: w.state, value: r.state),
+          if (w.usesContext) _Factor(label: 'Your choices for tonight', weight: w.context, value: r.context),
           const SizedBox(height: 28),
           FeedbackPanel(filmId: f.id),
         ],
@@ -111,10 +111,10 @@ class _Reason extends StatelessWidget {
   }
 }
 
-class _ScoreBar extends StatelessWidget {
-  const _ScoreBar({required this.label, required this.weight, required this.value});
+class _Factor extends StatelessWidget {
+  const _Factor({required this.label, required this.weight, required this.value});
   final String label;
-  final String weight;
+  final double weight;
   final double value;
 
   @override
@@ -124,10 +124,11 @@ class _ScoreBar extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('$label · weight $weight', style: t.bodyMedium)),
-          Text('${(value * 100).round()}%', style: t.titleMedium),
+          Expanded(child: Text('$label · weight ${(weight * 100).round()}%', style: t.bodyMedium)),
+          Text(supportLabel(value), style: t.titleMedium),
         ]),
         const SizedBox(height: 6),
+        // A bar with no number: the RFC keeps percentages for the weights only.
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(value: value, minHeight: 8, backgroundColor: SceneColors.panel, color: SceneColors.ink),

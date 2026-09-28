@@ -10,53 +10,68 @@ String _join(List<String> parts) {
   return '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
 }
 
-/// The plan's "Why this movie?" (§5): baseline, current context, and how the
-/// recommendation meets both. Built from the same numbers that produced the
-/// score, so it never claims something the scoring did not do.
+String _pct(double w) => '${(w * 100).round()}%';
+
+/// "Why this movie?" in the RFC's three parts (§8): *Your taste*, *Right
+/// now*, and *How that affected this pick*. Every sentence is built from the
+/// film's contribution record — its weights, scores and catalogue tags — so
+/// it never claims something the ranking did not do.
 class Explanation {
-  const Explanation({required this.baseline, required this.context, required this.recommendation, required this.headline});
+  const Explanation({required this.taste, required this.rightNow, required this.effect, required this.headline});
 
-  /// "Baseline: mystery, crime, clever plots, character-driven stories."
-  final String baseline;
+  /// What in the user's own ratings and picks this film matches.
+  final String taste;
 
-  /// "Current context: lower intensity, moderate cognitive engagement, …" — or
-  /// null when the pick was made on taste alone.
-  final String? context;
+  /// What the check-in and the user's choices asked for tonight — or null
+  /// when neither played a part.
+  final String? rightNow;
 
-  /// How the two came together.
-  final String recommendation;
+  /// How the inputs were weighed for this film.
+  final String effect;
 
-  /// The short match line shown on the card instead of an opaque score.
+  /// The short line on the pick card.
   final String headline;
 }
 
-/// [usualIntensity] is the intensity of the films the user usually enjoys
-/// (from their taste profile): intensity is described relative to it.
+/// [state] is null when the list is taste only — including when the check-in
+/// was skipped or is stale. [usualIntensity] is the intensity of the films
+/// the user usually enjoys; intensity is described relative to it.
+/// [tasteOnlyRank] is the film's place on taste alone, when known.
 Explanation explain(
   Recommendation r, {
   CurrentState? state,
   ViewingContext viewing = const ViewingContext(),
-  RecommendationMode mode = RecommendationMode.tastePlusState,
   double? usualIntensity,
+  int? tasteOnlyRank,
 }) {
   final f = r.film;
+  final w = r.weights;
   final genres = r.matchedGenres.take(3).map((g) => g.label.toLowerCase()).toList();
   final traits = r.matchedTraits.take(2).map((t) => t.label).toList();
-  final baselineParts = [...genres, ...traits];
-  final baseline = baselineParts.isEmpty
-      ? 'Baseline: close to films you rated well.'
-      : 'Baseline: ${_join(baselineParts)}.';
+  final tasteParts = [...genres, ...traits];
+  final taste = tasteParts.isEmpty
+      ? 'Close to the films you rated well.'
+      : 'You rate ${_join(tasteParts)} highly, and this film has ${tasteParts.length == 1 ? 'it' : 'them'}.';
 
-  if (mode == RecommendationMode.tasteOnly || state == null) {
+  final choices = <String>[
+    if (viewing.intent != null) 'You chose "${viewing.intent!.label}"${w.usesState ? ', which takes precedence over the check-in' : ''}.',
+    if (viewing.maxRuntimeMinutes != null) 'You asked for ${viewing.maxRuntimeMinutes} minutes or less; this film runs ${f.runtimeMinutes}.',
+  ];
+
+  if (!w.usesState) {
+    final effect = w.usesContext
+        ? 'Ranked on taste (${_pct(w.taste)}) and your choice of evening (${_pct(w.context)}). No check-in was used.'
+        : 'Ranked on your taste alone — the way a conventional recommender would. No check-in was used.';
     return Explanation(
-      baseline: baseline,
-      context: null,
-      recommendation: 'Chosen on taste alone — the way a conventional recommender would.',
-      headline: 'Matches what you usually enjoy${genres.isEmpty ? '' : ': ${_join(genres)}'}.',
+      taste: taste,
+      rightNow: choices.isEmpty ? null : choices.join(' '),
+      effect: effect,
+      headline: '${r.fitLabel}${genres.isEmpty ? '' : ': ${_join(genres)}'}.',
     );
   }
 
-  final t = StateTargets.from(state);
+  final st = state!;
+  final t = StateTargets.from(st);
   final delta = usualIntensity == null ? 0.0 : f.intensity - usualIntensity;
   final intensity = delta <= -0.2
       ? 'lower intensity than you usually choose'
@@ -65,24 +80,37 @@ Explanation explain(
           : _level(f.intensity, low: 'lower intensity', moderate: 'moderate intensity', high: 'high intensity');
   final thinking = _level(f.cognitiveLoad, low: 'an easy watch', moderate: 'moderate cognitive engagement', high: 'a demanding watch');
   final tone = f.tone.isLight ? 'entertaining rather than emotionally heavy' : 'a ${f.tone.label} tone';
-  final contextParts = [intensity, thinking, tone];
-  if (viewing.maxRuntimeMinutes != null) contextParts.add('under ${viewing.maxRuntimeMinutes} minutes');
-  if (viewing.intent != null) contextParts.add('fits "${viewing.intent!.label}"');
+  final source = switch (st.source) {
+    StateSource.synheart => 'Your check-in suggests',
+    StateSource.adjusted => 'Your adjusted check-in suggests',
+    StateSource.preset => 'The demo data suggests',
+  };
+  final rightNow = [
+    '$source this may be ${st.suggestedExperience.phrase}. This film is ${_join([intensity, thinking, tone])}.',
+    ...choices,
+  ].join(' ');
 
-  final softer = f.intensity < t.intensity + 0.15 && t.prefersLightTone;
-  final recommendation = softer
-      ? 'A film that stays true to your taste while adjusting intensity and tone for the current moment.'
-      : 'A film that fits both your taste and how you are right now.';
+  final moved = tasteOnlyRank == null
+      ? ''
+      : tasteOnlyRank > 5
+          ? ' On taste alone it was #$tasteOnlyRank; tonight\'s context brought it into the list.'
+          : ' On taste alone it was #$tasteOnlyRank.';
+  final effect = 'Taste counted for ${_pct(w.taste)}, the check-in for ${_pct(w.state)} and your choices for ${_pct(w.context)}. '
+      'Support: ${supportLabel(r.taste).toLowerCase()} on taste, ${supportLabel(r.state).toLowerCase()} for right now.$moved';
 
   final what = traits.isNotEmpty ? traits.first : (genres.isNotEmpty ? '${genres.first} stories' : 'the films you like');
   final headline = t.prefersLightTone
-      ? 'Matches your taste for $what, while fitting a moment where something ${f.tone.isLight ? 'lighter' : 'less intense'} may be preferable.'
-      : 'Matches your taste for $what, and suits your ${state.suggestedExperience.label.toLowerCase()} mood.';
+      ? 'Keeps your taste for $what, and something ${f.tone.isLight ? 'lighter' : 'less intense'} may suit tonight.'
+      : 'Keeps your taste for $what, and may suit ${st.suggestedExperience.phrase}.';
 
-  return Explanation(
-    baseline: baseline,
-    context: 'Current context: ${_join(contextParts)}.',
-    recommendation: recommendation,
-    headline: headline,
-  );
+  return Explanation(taste: taste, rightNow: rightNow, effect: effect, headline: headline);
+}
+
+/// "just now", "12 min ago", "1 h 5 min ago" — the age of a state snapshot.
+String ageLabel(DateTime at, DateTime now) {
+  final d = now.difference(at);
+  if (d.inMinutes < 1) return 'just now';
+  if (d.inHours < 1) return '${d.inMinutes} min ago';
+  final m = d.inMinutes % 60;
+  return '${d.inHours} h${m == 0 ? '' : ' $m min'} ago';
 }
