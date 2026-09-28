@@ -1,8 +1,19 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Scene's check-in reads typing timing only. synheart_behavior 0.4.1 merges
+         a notification listener and READ_PHONE_STATE into every host; Scene
+         collects neither, so they are removed. -->
+    <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"
+        tools:node="remove" />
+
     <application
-        android:label="scene"
+        android:label="Scene"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <service android:name="ai.synheart.behavior.SynheartNotificationListenerService"
+            tools:node="remove" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
