@@ -1,11 +1,13 @@
 import 'package:go_router/go_router.dart';
 
 import 'check_in_screen.dart';
+import 'compare_screen.dart';
 import 'dna_screen.dart';
 import 'profile_screen.dart';
 import 'state_screen.dart';
+import 'tonight_screen.dart';
 import 'welcome_screen.dart';
-import 'widgets.dart';
+import 'why_screen.dart';
 
 /// The eight MVP screens (plan §9). "Taste vs. Taste + State" is the toggle
 /// on Tonight's Picks plus the side-by-side compare view.
@@ -27,8 +29,8 @@ GoRouter buildRouter() => GoRouter(
         GoRoute(path: Routes.dna, builder: (_, _) => const DnaScreen()),
         GoRoute(path: Routes.checkIn, builder: (_, _) => const CheckInScreen()),
         GoRoute(path: Routes.state, builder: (_, _) => const StateScreen()),
-        GoRoute(path: Routes.tonight, builder: (_, _) => const ComingNext("Tonight's picks")),
-        GoRoute(path: Routes.compare, builder: (_, _) => const ComingNext('What changed?')),
-        GoRoute(path: '/why/:id', builder: (_, _) => const ComingNext('Why this movie?')),
+        GoRoute(path: Routes.tonight, builder: (_, _) => const TonightScreen()),
+        GoRoute(path: Routes.compare, builder: (_, _) => const CompareScreen()),
+        GoRoute(path: '/why/:id', builder: (_, st) => WhyScreen(filmId: st.pathParameters['id']!)),
       ],
     );

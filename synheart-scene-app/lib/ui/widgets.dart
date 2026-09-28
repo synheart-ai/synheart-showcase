@@ -53,15 +53,3 @@ class PageBody extends StatelessWidget {
         ),
       );
 }
-
-/// Placeholder for screens that are built in a later step.
-class ComingNext extends StatelessWidget {
-  const ComingNext(this.title, {super.key});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: const Center(child: Text('Coming in the next build step.')),
-      );
-}
