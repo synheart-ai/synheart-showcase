@@ -25,7 +25,7 @@ class StateScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Your current context')),
         body: PageBody(
-          bottom: FilledButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Start my check-in')),
+          bottom: FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Start my check-in')),
           children: const [Callout(child: Text('Do a quick Synheart check-in first.'))],
         ),
       );
@@ -115,7 +115,7 @@ class StateScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          TextButton(onPressed: () => context.go(Routes.checkIn), child: const Text('Check in again')),
+          TextButton(onPressed: () => context.pushReplacement(Routes.checkIn), child: const Text('Check in again')),
         ],
       ),
     );

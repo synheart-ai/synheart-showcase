@@ -31,12 +31,12 @@ class WelcomeScreen extends StatelessWidget {
                 child: const Text('Reset demo'),
               ),
             ] else ...[
-              FilledButton(onPressed: () => context.go(Routes.profile), child: const Text('Build my movie profile')),
+              FilledButton(onPressed: () => context.push(Routes.profile), child: const Text('Build my movie profile')),
               const SizedBox(height: 10),
               OutlinedButton(
                 onPressed: () {
                   context.read<SceneCubit>().useAnswers(demoPersonaAnswers);
-                  context.go(Routes.dna);
+                  context.push(Routes.dna);
                 },
                 child: const Text('Try the demo profile'),
               ),

@@ -22,7 +22,7 @@ class DnaScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Your Movie DNA')),
         body: PageBody(
-          bottom: FilledButton(onPressed: () => context.go(Routes.profile), child: const Text('Build my movie profile')),
+          bottom: FilledButton(onPressed: () => context.push(Routes.profile), child: const Text('Build my movie profile')),
           children: const [Callout(child: Text('Build your movie profile first — Scene needs your baseline.'))],
         ),
       );

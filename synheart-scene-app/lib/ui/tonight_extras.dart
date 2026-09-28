@@ -77,13 +77,17 @@ class StateCollections extends StatelessWidget {
                 separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (_, i) {
                   final f = entry.value[i];
-                  return InkWell(
+                  return Semantics(
+                    button: true,
+                    label: '${f.title}, ${f.year}. Why this movie?',
+                    child: InkWell(
                     borderRadius: BorderRadius.circular(10),
                     onTap: () {
                       context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': f.id, 'from': entry.key.name});
                       context.push(Routes.why(f.id));
                     },
                     child: Poster(f, width: 88, height: 128),
+                  ),
                   );
                 },
               ),

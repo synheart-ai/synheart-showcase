@@ -30,6 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _index++);
   }
 
+  void _leave(BuildContext context) => context.canPop() ? context.pop() : context.go(Routes.welcome);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Back',
-          onPressed: () => _index == 0 ? context.go(Routes.welcome) : setState(() => _index--),
+          onPressed: () => _index == 0 ? _leave(context) : setState(() => _index--),
         ),
         title: Text(_rating ? 'Build your movie profile' : 'Your preferences'),
       ),
@@ -162,7 +164,8 @@ class _Preferences extends StatelessWidget {
         // whatever was answered.
         onPressed: () {
           cubit.completeProfile();
-          context.go(Routes.dna);
+          // Replace: Back from Movie DNA goes to Welcome, not into the ratings.
+          context.pushReplacement(Routes.dna);
         },
         child: const Text('See my Movie DNA'),
       ),

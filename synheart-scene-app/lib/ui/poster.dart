@@ -24,7 +24,11 @@ class Poster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = colorFor(film.tone);
-    return Container(
+    // Decorative: the title is always shown (and read) next to the poster, or
+    // the tappable poster carries its own label. Excluding it stops screen
+    // readers announcing every title twice.
+    return ExcludeSemantics(
+      child: Container(
       width: width,
       height: height,
       padding: const EdgeInsets.all(8),
@@ -38,6 +42,7 @@ class Poster extends StatelessWidget {
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(fontFamily: 'Georgia', color: Colors.white, fontSize: width / 6.5, height: 1.1, fontWeight: FontWeight.w600),
+      ),
       ),
     );
   }

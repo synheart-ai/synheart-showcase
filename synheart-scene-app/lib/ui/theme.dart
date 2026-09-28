@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 /// headings, sage secondary text and pale green panels.
 abstract final class SceneColors {
   static const ink = Color(0xFF1B3D33); // deep green — headings, primary
-  static const sage = Color(0xFF6E8B7B); // secondary text
+  static const sage = Color(0xFF56705F); // secondary text — 4.5:1 or better on paper and panel (WCAG AA)
   static const panel = Color(0xFFE8F0EC); // pale green callouts
   static const paper = Color(0xFFFAFBFA); // background
   static const line = Color(0xFFD9E3DE);
-  static const accent = Color(0xFF3F7CC4); // the plan's blue rule; used sparingly
-  static const warm = Color(0xFFC9803D); // "Love it" and highlights
+  static const accent = Color(0xFF326AAE); // the plan's blue rule; darkened to 4.5:1 for text
+  static const warm = Color(0xFF9A5A1A); // highlights; darkened to 4.5:1 for text
 }
 
 ThemeData sceneTheme() {

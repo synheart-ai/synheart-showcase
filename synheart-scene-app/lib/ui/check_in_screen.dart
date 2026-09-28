@@ -72,7 +72,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   void _skip() {
     _log.record(DemoEvent.checkInSkipped, {'at': _phase.name});
     context.read<SceneCubit>().clearCurrentState();
-    context.go(Routes.tonight);
+    context.pushReplacement(Routes.tonight);
   }
 
   // Called by BehaviorTextField when a typing burst ends. Only timing
@@ -107,13 +107,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
     _log.record(DemoEvent.checkInSucceeded, {'nativeSdk': '${_synheart.behavior != null}'});
     _text.clear(); // Nothing the user wrote is kept.
     context.read<SceneCubit>().setCurrentState(state);
-    context.go(Routes.state);
+    // Replace: Back from the result should not reopen the consent page.
+    context.pushReplacement(Routes.state);
   }
 
   void _useDemo(DemoScenario d) {
     _log.record(DemoEvent.demoScenarioUsed, {'scenario': d.name});
     context.read<SceneCubit>().setCurrentState(d.state);
-    context.go(Routes.state);
+    context.pushReplacement(Routes.state);
   }
 
   @override

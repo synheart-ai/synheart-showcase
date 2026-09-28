@@ -28,7 +28,7 @@ class TonightScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text("Tonight's picks")),
         body: PageBody(
-          bottom: FilledButton(onPressed: () => context.go(Routes.profile), child: const Text('Build my movie profile')),
+          bottom: FilledButton(onPressed: () => context.push(Routes.profile), child: const Text('Build my movie profile')),
           children: const [Callout(child: Text('Scene needs your movie profile first.'))],
         ),
       );

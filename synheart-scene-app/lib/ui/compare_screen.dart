@@ -50,7 +50,7 @@ class CompareScreen extends StatelessWidget {
           bottom: FilledButton(
             onPressed: () {
               context.read<SceneCubit>().setMode(RecommendationMode.tastePlusState);
-              context.go(Routes.tonight);
+              context.canPop() ? context.pop() : context.go(Routes.tonight);
             },
             child: const Text('Watch with my current state'),
           ),
@@ -147,6 +147,7 @@ class _Row extends StatelessWidget {
             if (badge != null)
               Text(
                 badge!,
+                semanticsLabel: _spoken(badge!),
                 style: t.titleMedium?.copyWith(color: badge!.startsWith('↑') || badge == 'new' ? SceneColors.warm : SceneColors.sage),
               ),
           ],
@@ -154,4 +155,14 @@ class _Row extends StatelessWidget {
       ),
     );
   }
+}
+
+/// What a screen reader says for a movement badge.
+String _spoken(String badge) {
+  if (badge == '=') return 'same place';
+  if (badge == 'new') return 'new';
+  if (badge.startsWith('↑ from #')) return 'moved up from number ${badge.substring(8)}';
+  if (badge.startsWith('↑ ')) return 'up ${badge.substring(2)}';
+  if (badge.startsWith('↓ ')) return 'down ${badge.substring(2)}';
+  return badge;
 }
