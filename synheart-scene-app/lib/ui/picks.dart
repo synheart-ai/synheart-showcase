@@ -6,8 +6,8 @@ import '../engine/recommender.dart';
 const _engine = Recommender();
 
 /// Everything a screen needs to show picks honestly. [state] is the fresh
-/// check-in or null: a missing or stale snapshot means taste only, and the
-/// screens say so (RFC §8).
+/// reading or null: a missing or stale reading, or one with no confident
+/// axis, means taste only, and the screens say so (RFC §8).
 class Picks {
   Picks(this.s, this.state);
 
@@ -19,8 +19,14 @@ class Picks {
   /// A snapshot exists but is too old to use.
   bool get isStale => s.current != null && state == null;
 
-  /// The mode actually in effect: taste + state needs a fresh state.
-  RecommendationMode get mode => state == null ? RecommendationMode.tasteOnly : s.mode;
+  /// A fresh reading exists, but no axis is confident enough to use.
+  bool get lacksEvidence => state != null && !state!.hasEvidence;
+
+  /// A fresh reading Scene can rank with.
+  bool get hasUsableState => state != null && state!.hasEvidence;
+
+  /// The mode actually in effect: taste + state needs a usable reading.
+  RecommendationMode get mode => hasUsableState ? s.mode : RecommendationMode.tasteOnly;
 
   bool get withState => mode == RecommendationMode.tastePlusState;
 
@@ -51,7 +57,7 @@ class Picks {
   Comparison? compare() {
     final p = s.profile;
     final st = state;
-    if (p == null || st == null) return null;
+    if (p == null || st == null || !st.hasEvidence) return null;
     return compareRankings(_engine, p, state: st, context: s.viewing, hidden: s.hiddenFilmIds);
   }
 

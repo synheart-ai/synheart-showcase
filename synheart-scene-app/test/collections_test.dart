@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scene/data/demo_persona.dart';
+import 'package:scene/data/demo_scenarios.dart';
 import 'package:scene/domain/state.dart';
 import 'package:scene/engine/collections.dart';
 import 'package:scene/engine/taste_builder.dart';
 
 void main() {
   final persona = buildTasteProfile(demoPersonaAnswers);
-  final c = buildCollections(persona, state: CurrentState.planExample);
+  final c = buildCollections(persona, state: DemoScenario.busyEvening.state);
 
   test('every collection has films', () {
     for (final col in Collection.values) {
@@ -29,7 +30,7 @@ void main() {
 
   test('hidden films are left out', () {
     final first = c[Collection.familiar]!.first.id;
-    final again = buildCollections(persona, state: CurrentState.planExample, hidden: {first});
+    final again = buildCollections(persona, state: DemoScenario.busyEvening.state, hidden: {first});
     for (final list in again.values) {
       expect(list.map((f) => f.id), isNot(contains(first)));
     }

@@ -11,7 +11,7 @@ import 'routes.dart';
 import 'theme.dart';
 
 /// "Choose My Evening" — explicit intent plus the 90-minute filter, in both
-/// modes. The user's choice takes precedence over the check-in (RFC §4).
+/// modes. The user's choice takes precedence over the current state (RFC §4).
 class ChooseMyEvening extends StatelessWidget {
   const ChooseMyEvening({super.key});
 

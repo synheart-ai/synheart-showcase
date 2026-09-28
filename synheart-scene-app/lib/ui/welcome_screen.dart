@@ -23,7 +23,7 @@ class WelcomeScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (hasProfile) ...[
-              FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Continue to my check-in')),
+              FilledButton(onPressed: () => context.push(Routes.tonight), child: const Text("Tonight's picks")),
               const SizedBox(height: 10),
               OutlinedButton(onPressed: () => context.push(Routes.dna), child: const Text('See my Movie DNA')),
               TextButton(

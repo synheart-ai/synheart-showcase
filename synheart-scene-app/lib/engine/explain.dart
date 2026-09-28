@@ -33,8 +33,8 @@ class Explanation {
   final String headline;
 }
 
-/// [state] is null when the list is taste only — including when the check-in
-/// was skipped or is stale. [usualIntensity] is the intensity of the films
+/// [state] is null when the list is taste only — including when no reading was
+/// taken, it is stale, or no axis had enough confidence. [usualIntensity] is the intensity of the films
 /// the user usually enjoys; intensity is described relative to it.
 /// [tasteOnlyRank] is the film's place on taste alone, when known.
 Explanation explain(
@@ -54,14 +54,14 @@ Explanation explain(
       : 'You rate ${_join(tasteParts)} highly, and this film has ${tasteParts.length == 1 ? 'it' : 'them'}.';
 
   final choices = <String>[
-    if (viewing.intent != null) 'You chose "${viewing.intent!.label}"${w.usesState ? ', which takes precedence over the check-in' : ''}.',
+    if (viewing.intent != null) 'You chose "${viewing.intent!.label}"${w.usesState ? ', which takes precedence over your current state' : ''}.',
     if (viewing.maxRuntimeMinutes != null) 'You asked for ${viewing.maxRuntimeMinutes} minutes or less; this film runs ${f.runtimeMinutes}.',
   ];
 
   if (!w.usesState) {
     final effect = w.usesContext
-        ? 'Ranked on taste (${_pct(w.taste)}) and your choice of evening (${_pct(w.context)}). No check-in was used.'
-        : 'Ranked on your taste alone — the way a conventional recommender would. No check-in was used.';
+        ? 'Ranked on taste (${_pct(w.taste)}) and your choice of evening (${_pct(w.context)}). No current state was used.'
+        : 'Ranked on your taste alone — the way a conventional recommender would. No current state was used.';
     return Explanation(
       taste: taste,
       rightNow: choices.isEmpty ? null : choices.join(' '),
@@ -80,13 +80,20 @@ Explanation explain(
           : _level(f.intensity, low: 'lower intensity', moderate: 'moderate intensity', high: 'high intensity');
   final thinking = _level(f.cognitiveLoad, low: 'an easy watch', moderate: 'moderate cognitive engagement', high: 'a demanding watch');
   final tone = f.tone.isLight ? 'entertaining rather than emotionally heavy' : 'a ${f.tone.label} tone';
-  final source = switch (st.source) {
-    StateSource.synheart => 'Your check-in suggests',
-    StateSource.adjusted => 'Your adjusted check-in suggests',
-    StateSource.preset => 'The demo data suggests',
+  final (source, s) = switch (st.source) {
+    StateSource.synheart => ('Your wearable readings', ''),
+    StateSource.wearSim => ('The WearSim demo readings', ''),
+    StateSource.preset => ('The demo data', 's'),
   };
+  final used = st.availableAxes.map((a) => a.label.toLowerCase()).toList();
+  final missing = [for (final a in HsiAxis.values) if (!st.availableAxes.contains(a)) a.label.toLowerCase()];
+  final basis = 'Based on ${_join(used)}${missing.isEmpty ? '' : ' (${_join(missing)} not available)'}.';
+  final need = st.suggestedExperience;
   final rightNow = [
-    '$source this may be ${st.suggestedExperience.phrase}. This film is ${_join([intensity, thinking, tone])}.',
+    need == null
+        ? '$source show$s no clear need tonight, so ${s.isEmpty ? 'they' : 'it'} only nudge$s the ranking. $basis'
+        : '$source suggest$s this may be ${need.phrase}. $basis',
+    'This film is ${_join([intensity, thinking, tone])}.',
     ...choices,
   ].join(' ');
 
@@ -95,13 +102,15 @@ Explanation explain(
       : tasteOnlyRank > 5
           ? ' On taste alone it was #$tasteOnlyRank; tonight\'s context brought it into the list.'
           : ' On taste alone it was #$tasteOnlyRank.';
-  final effect = 'Taste counted for ${_pct(w.taste)}, the check-in for ${_pct(w.state)} and your choices for ${_pct(w.context)}. '
+  final effect = 'Taste counted for ${_pct(w.taste)}, your current state for ${_pct(w.state)} and your choices for ${_pct(w.context)}. '
       'Support: ${supportLabel(r.taste).toLowerCase()} on taste, ${supportLabel(r.state).toLowerCase()} for right now.$moved';
 
   final what = traits.isNotEmpty ? traits.first : (genres.isNotEmpty ? '${genres.first} stories' : 'the films you like');
   final headline = t.prefersLightTone
       ? 'Keeps your taste for $what, and something ${f.tone.isLight ? 'lighter' : 'less intense'} may suit tonight.'
-      : 'Keeps your taste for $what, and may suit ${st.suggestedExperience.phrase}.';
+      : need == null
+          ? 'Keeps your taste for $what, and fits how tonight looks.'
+          : 'Keeps your taste for $what, and may suit ${need.phrase}.';
 
   return Explanation(taste: taste, rightNow: rightNow, effect: effect, headline: headline);
 }

@@ -28,12 +28,14 @@ class CompareScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('What changed?')),
         body: PageBody(
-          bottom: FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Do my check-in')),
+          bottom: FilledButton(onPressed: () => context.push(Routes.settings), child: const Text('Connect a source')),
           children: [
             Callout(
               child: Text(picks.isStale
-                  ? 'Your check-in is too old to compare with. Check in again to see what fits right now.'
-                  : 'Scene needs your baseline and a fresh check-in to compare.'),
+                  ? 'Your last reading is too old to compare with. Connect a source for a new one.'
+                  : picks.lacksEvidence
+                      ? 'There is not enough signal yet to compare with — Scene is using your taste only.'
+                      : 'Scene needs your baseline and a current reading to compare.'),
             ),
           ],
         ),
@@ -56,7 +58,7 @@ class CompareScreen extends StatelessWidget {
           ),
           children: [
             if (demo) ...[
-              const Eyebrow('Demo data — not a real check-in'),
+              const Eyebrow('Demo data — not a real reading'),
               const SizedBox(height: 8),
             ],
             Text('Taste only', style: t.titleLarge),

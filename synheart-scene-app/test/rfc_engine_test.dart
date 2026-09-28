@@ -13,7 +13,7 @@ void main() {
   group('explicit intent takes precedence (RFC §4)', () {
     test('with an intent, context carries the 35% share and state 15%', () {
       final r = engine.score(filmById('knives-out')!, persona,
-          state: CurrentState.planExample, context: const ViewingContext(intent: EveningIntent.engaging));
+          state: DemoScenario.busyEvening.state, context: const ViewingContext(intent: EveningIntent.engaging));
       expect(r.weights.context, 0.35);
       expect(r.weights.state, 0.15);
       expect(r.score, closeTo(0.5 * r.taste + 0.15 * r.state + 0.35 * r.context, 1e-9));
@@ -21,8 +21,8 @@ void main() {
 
     test('an intent that disagrees with the state moves the list towards the intent', () {
       const engaging = ViewingContext(intent: EveningIntent.engaging);
-      final plain = engine.recommend(persona, state: CurrentState.planExample);
-      final chosen = engine.recommend(persona, state: CurrentState.planExample, context: engaging);
+      final plain = engine.recommend(persona, state: DemoScenario.busyEvening.state);
+      final chosen = engine.recommend(persona, state: DemoScenario.busyEvening.state, context: engaging);
       double load(List<Recommendation> l) => l.map((r) => r.film.cognitiveLoad).reduce((a, b) => a + b) / l.length;
       expect(load(chosen), greaterThan(load(plain)));
     });
@@ -38,7 +38,7 @@ void main() {
   group('descriptive fit, not a percentage (RFC §7)', () {
     test('labels say whose fit it is', () {
       final taste = engine.recommend(persona, mode: RecommendationMode.tasteOnly).first;
-      final tonight = engine.recommend(persona, state: CurrentState.planExample).first;
+      final tonight = engine.recommend(persona, state: DemoScenario.busyEvening.state).first;
       expect(taste.fitLabel, 'Strong fit for your taste');
       expect(tonight.fitLabel, 'Strong fit for tonight');
       expect(Fit.of(0.65), Fit.good);
@@ -62,17 +62,17 @@ void main() {
 
     test('both modes rank the same eligible catalogue', () {
       final all = engine.recommend(persona, mode: RecommendationMode.tasteOnly, limit: null).map((r) => r.film.id).toSet();
-      final withState = engine.recommend(persona, state: CurrentState.planExample, limit: null).map((r) => r.film.id).toSet();
+      final withState = engine.recommend(persona, state: DemoScenario.busyEvening.state, limit: null).map((r) => r.film.id).toSet();
       expect(withState, all);
     });
   });
 
   group('freshness (RFC §8)', () {
-    test('a snapshot goes stale after two hours', () {
+    test('a reading goes stale 30 minutes after the signal stops', () {
       final at = DateTime(2026, 9, 28, 20);
-      final s = CurrentState.planExample.copyWith(capturedAt: at);
-      expect(s.isStaleAt(at.add(const Duration(minutes: 119))), isFalse);
-      expect(s.isStaleAt(at.add(const Duration(hours: 2, minutes: 1))), isTrue);
+      final s = DemoScenario.busyEvening.state.copyWith(capturedAt: at);
+      expect(s.isStaleAt(at.add(const Duration(minutes: 29))), isFalse);
+      expect(s.isStaleAt(at.add(const Duration(minutes: 31))), isTrue);
     });
   });
 }

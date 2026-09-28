@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:scene/app/synheart.dart';
+import '../support/fake_signals.dart';
 import 'package:scene/data/catalogue.dart';
 import 'package:scene/data/demo_persona.dart';
 import 'package:scene/engine/taste_builder.dart';
@@ -8,7 +8,7 @@ import 'package:scene/ui/dna_screen.dart';
 
 void main() {
   testWidgets('rate films one by one, pick genres, reach Movie DNA', (tester) async {
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable()));
+    await tester.pumpWidget(SceneApp(signals: FakeSignals()));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Build my movie profile'));
     await tester.pumpAndSettle();
@@ -29,7 +29,7 @@ void main() {
     expect(find.text('Your Movie DNA'), findsOneWidget);
     expect(find.text('Strong'), findsWidgets);
     expect(find.textContaining('%'), findsNothing);
-    expect(find.text('Start my Synheart check-in'), findsOneWidget);
+    expect(find.text("See tonight's picks"), findsOneWidget);
   });
 
   test('DNA traits for the demo persona read like the plan', () {

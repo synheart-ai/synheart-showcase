@@ -60,24 +60,44 @@ enum RecommendationMode {
   final String label;
 }
 
-/// What the current state asks of a film — derived, then shown to the user.
+/// What the current state asks of a film, from the HSI axes that are
+/// available. A missing or low-confidence axis sets no target: Scene never
+/// turns absent evidence into a preference (Resona's rule).
 class StateTargets {
-  const StateTargets({required this.intensity, required this.cognitiveLoad, required this.energy, required this.prefersLightTone});
+  const StateTargets({this.intensity, this.cognitiveLoad, this.energy, this.strain});
 
-  final double intensity;
-  final double cognitiveLoad;
-  final double energy;
+  final double? intensity;
+  final double? cognitiveLoad;
+  final double? energy;
 
-  /// High mental load → lighter tones fit better right now.
-  final bool prefersLightTone;
+  /// The strongest sign of strain among stress, reduced capacity and raised
+  /// arousal (0–1), or null when none of them is available.
+  final double? strain;
 
-  factory StateTargets.from(CurrentState s) => StateTargets(
-        intensity: _clamp01(0.8 - 0.6 * s.mentalLoad + 0.1 * (s.energy - 0.5)),
-        // Moderate engagement still wants something involving (~0.5), just not demanding.
-        cognitiveLoad: _clamp01(0.4 + 0.4 * s.engagement - 0.15 * s.mentalLoad),
-        energy: _clamp01(0.3 + 0.55 * s.energy),
-        prefersLightTone: s.mentalLoad >= 0.6,
-      );
+  /// Strain at or above 0.6: lighter tones fit better right now.
+  bool get prefersLightTone => strain != null && strain! >= 0.6;
+
+  bool get isEmpty => intensity == null && cognitiveLoad == null && energy == null;
+
+  factory StateTargets.from(CurrentState s) {
+    final stress = s.valueOf(HsiAxis.stress);
+    final capacity = s.valueOf(HsiAxis.capacity);
+    final arousal = s.valueOf(HsiAxis.arousal);
+    final focus = s.valueOf(HsiAxis.focus);
+    final signs = [
+      ?stress,
+      if (capacity != null) 1 - capacity,
+      if (arousal != null) _clamp01((arousal - 0.5) * 2),
+    ];
+    final strain = signs.isEmpty ? null : signs.reduce((a, b) => a > b ? a : b);
+    return StateTargets(
+      strain: strain,
+      intensity: strain == null ? null : _clamp01(0.8 - 0.6 * strain),
+      // Settled focus can take a demanding film; drifting focus wants an easy one.
+      cognitiveLoad: focus == null ? null : _clamp01(0.3 + 0.5 * focus - 0.15 * (strain ?? 0)),
+      energy: arousal == null ? null : _clamp01(0.3 + 0.55 * arousal),
+    );
+  }
 }
 
 /// One scored film, with the pieces of the score kept for "Why this movie?".
@@ -138,13 +158,21 @@ class Recommender {
   }
 
   /// State fit (0–1): does this film suit the moment?
+  /// Weighted over the targets that exist; 0.5 (neutral) when none do.
   double stateFit(Film f, CurrentState s) {
     final t = StateTargets.from(s);
-    final tone = t.prefersLightTone ? (f.tone.isLight ? 1.0 : (_isDark(f.tone) ? 0.15 : 0.55)) : 0.7;
-    return _clamp01(0.40 * _closeness(f.intensity, t.intensity) +
-        0.25 * _closeness(f.cognitiveLoad, t.cognitiveLoad) +
-        0.15 * _closeness(f.energy, t.energy) +
-        0.20 * tone);
+    var sum = 0.0;
+    var weight = 0.0;
+    void add(double w, double v) {
+      sum += w * v;
+      weight += w;
+    }
+
+    if (t.intensity != null) add(0.40, _closeness(f.intensity, t.intensity!));
+    if (t.cognitiveLoad != null) add(0.25, _closeness(f.cognitiveLoad, t.cognitiveLoad!));
+    if (t.energy != null) add(0.15, _closeness(f.energy, t.energy!));
+    if (t.strain != null) add(0.20, t.prefersLightTone ? (f.tone.isLight ? 1.0 : (_isDark(f.tone) ? 0.15 : 0.55)) : 0.7);
+    return weight == 0 ? 0.5 : _clamp01(sum / weight);
   }
 
   /// Context fit (0–1): does it fit the evening the user asked for?
@@ -156,6 +184,8 @@ class Recommender {
       };
 
   Recommendation score(Film f, TasteProfile p, {CurrentState? state, ViewingContext context = const ViewingContext(), RecommendationMode mode = RecommendationMode.tastePlusState}) {
+    // A reading with no usable axis is no state at all: taste only.
+    if (state != null && !state.hasEvidence) state = null;
     final taste = tasteMatch(f, p);
     final st = state == null ? 0.5 : stateFit(f, state);
     final ctx = contextFit(f, context);

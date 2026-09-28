@@ -10,6 +10,7 @@ import '../engine/recommender.dart';
 import 'picks.dart';
 import 'poster.dart';
 import 'routes.dart';
+import 'state_sheet.dart';
 import 'theme.dart';
 import 'tonight_extras.dart';
 import 'widgets.dart';
@@ -43,9 +44,11 @@ class TonightScreen extends StatelessWidget {
     if (picks.withState) {
       note = '';
     } else if (picks.isStale) {
-      note = 'Taste only. Your check-in from ${ageLabel(at!, cubit.now())} is too old to use — check in again to see what fits right now.';
+      note = 'Taste only. Your last reading, from ${ageLabel(at!, cubit.now())}, is too old to use.';
+    } else if (picks.lacksEvidence) {
+      note = 'Taste only. There is not enough signal yet to say what fits right now — this is not a negative result.';
     } else if (current == null) {
-      note = 'Taste only. No check-in was used — do one to see what fits right now.';
+      note = 'Taste only. No current state was used — connect a source to see what fits right now.';
     } else {
       note = 'Taste only — the way a conventional recommender would.';
     }
@@ -56,28 +59,27 @@ class TonightScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Tonight's picks"),
-          actions: [
-            if (current != null && at != null)
-              TextButton.icon(
-                onPressed: () => context.push(Routes.state),
-                icon: const Icon(Icons.favorite, size: 16),
-                label: Text(ageLabel(at, cubit.now())),
-              ),
-          ],
+          actions: const [Padding(padding: EdgeInsets.only(right: 12), child: StatePill())],
         ),
         body: PageBody(
-          bottom: current == null
-              ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: Text(picks.isStale ? 'Check in again' : 'Add my current context'))
+          bottom: !picks.hasUsableState
+              ? FilledButton(onPressed: () => context.push(Routes.settings), child: const Text('Connect a source'))
               : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
           children: [
             SegmentedButton<RecommendationMode>(
               showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: RecommendationMode.tasteOnly, label: Text('BASED ON TASTE')),
-                ButtonSegment(value: RecommendationMode.tastePlusState, label: Text('TASTE + CURRENT STATE')),
+              // Disabled text stays at 4.5:1 (sage), so it is still readable.
+              style: ButtonStyle(
+                foregroundColor: WidgetStateProperty.resolveWith((st) => st.contains(WidgetState.disabled) ? SceneColors.sage : null),
+              ),
+              segments: [
+                const ButtonSegment(value: RecommendationMode.tasteOnly, label: Text('BASED ON TASTE')),
+                ButtonSegment(value: RecommendationMode.tastePlusState, label: const Text('TASTE + CURRENT STATE'), enabled: picks.hasUsableState),
               ],
               selected: {picks.mode},
-              onSelectionChanged: current == null ? null : (m) => cubit.setMode(m.first),
+              // Only the state segment is disabled without a usable reading, so
+            // the active one keeps full contrast.
+            onSelectionChanged: (m) => cubit.setMode(m.first),
             ),
             const SizedBox(height: 14),
             AnimatedSwitcher(
@@ -86,7 +88,7 @@ class TonightScreen extends StatelessWidget {
                   ? Callout(
                       key: const ValueKey('changed'),
                       title: "Your preferences haven't changed.",
-                      child: Text('Your context has.${current!.source == StateSource.preset ? ' (Demo data — not a real check-in.)' : ''}'),
+                      child: Text('Your context has.${current!.source == StateSource.preset ? ' (Demo data — not a real reading.)' : ''}'),
                     )
                   : Callout(key: ValueKey(note), child: Text(note)),
             ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scene/app/scene_cubit.dart';
-import 'package:scene/app/synheart.dart';
+import '../support/fake_signals.dart';
 import 'package:scene/data/demo_persona.dart';
 import 'package:scene/domain/taste.dart';
 import 'package:scene/engine/recommender.dart';
@@ -13,7 +13,7 @@ void main() {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable()));
+    await tester.pumpWidget(SceneApp(signals: FakeSignals()));
     await tester.pumpAndSettle();
   }
 

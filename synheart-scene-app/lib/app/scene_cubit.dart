@@ -145,16 +145,7 @@ class SceneCubit extends Cubit<SceneState> {
     try {
       final raw = prefs?.getString(_stateKey);
       if (raw == null) return;
-      final m = jsonDecode(raw) as Map<String, dynamic>;
-      emit(state.copyWith(
-        current: CurrentState(
-          energy: (m['energy'] as num).toDouble(),
-          mentalLoad: (m['mentalLoad'] as num).toDouble(),
-          engagement: (m['engagement'] as num).toDouble(),
-          source: StateSource.values.byName(m['source'] as String),
-          capturedAt: DateTime.parse(m['capturedAt'] as String),
-        ),
-      ));
+      emit(state.copyWith(current: CurrentState.fromJson(jsonDecode(raw) as Map<String, dynamic>)));
     } catch (_) {
       // An unreadable snapshot is dropped; the user can check in again.
     }
@@ -166,16 +157,7 @@ class SceneCubit extends Cubit<SceneState> {
       prefs?.remove(_stateKey);
       return;
     }
-    prefs?.setString(
-      _stateKey,
-      jsonEncode({
-        'energy': c.energy,
-        'mentalLoad': c.mentalLoad,
-        'engagement': c.engagement,
-        'source': c.source.name,
-        'capturedAt': c.capturedAt!.toIso8601String(),
-      }),
-    );
+    prefs?.setString(_stateKey, jsonEncode(c.toJson()));
   }
 
   void _persist() {

@@ -67,7 +67,7 @@ class WhyScreen extends StatelessWidget {
             _Reason(
               icon: Icons.favorite_border,
               title: 'Right now',
-              text: e.rightNow ?? 'No check-in or choice of evening was used for this pick.',
+              text: e.rightNow ?? 'No current state or choice of evening was used for this pick.',
             ),
             _Reason(icon: Icons.auto_awesome_outlined, title: 'How that affected this pick', text: e.effect),
             const SizedBox(height: 12),
@@ -76,7 +76,7 @@ class WhyScreen extends StatelessWidget {
             Text('Weights are tunable defaults, not a validated formula.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
             const SizedBox(height: 12),
             _Factor(label: 'Taste', weight: w.taste, value: r.taste),
-            if (w.usesState) _Factor(label: 'Right now (Synheart check-in)', weight: w.state, value: r.state),
+            if (w.usesState) _Factor(label: 'Right now (Synheart HSI)', weight: w.state, value: r.state),
             if (w.usesContext) _Factor(label: 'Your choices for tonight', weight: w.context, value: r.context),
             const SizedBox(height: 28),
             FeedbackPanel(filmId: f.id),

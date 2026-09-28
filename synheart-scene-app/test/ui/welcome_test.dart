@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:scene/app/synheart.dart';
+import '../support/fake_signals.dart';
 import 'package:scene/main.dart';
 
 void main() {
   testWidgets('welcome shows the promise and both ways in', (tester) async {
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable()));
+    await tester.pumpWidget(SceneApp(signals: FakeSignals()));
     await tester.pumpAndSettle();
     expect(find.text('Scene by Synheart'), findsOneWidget);
     expect(find.text('Taste tells us what you like.'), findsOneWidget);
@@ -13,7 +13,7 @@ void main() {
   });
 
   testWidgets('"Try the demo profile" fills the baseline and moves on', (tester) async {
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable()));
+    await tester.pumpWidget(SceneApp(signals: FakeSignals()));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();

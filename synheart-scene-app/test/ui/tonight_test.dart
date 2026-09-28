@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:scene/app/synheart.dart';
+import '../support/fake_signals.dart';
 import 'package:scene/main.dart';
 
 import 'helpers.dart';
@@ -10,16 +10,13 @@ void main() {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable(), clock: clock));
+    await tester.pumpWidget(SceneApp(signals: FakeSignals(), clock: clock));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Start my Synheart check-in'));
-    await tester.pumpAndSettle();
-    await tapDemo(tester, scenario);
-    await tester.pumpAndSettle();
     await tester.tap(find.text("See tonight's picks"));
     await tester.pumpAndSettle();
+    await useDemo(tester, scenario);
   }
 
   Finder pickCard(String title) => find.descendant(of: find.byType(Card), matching: find.text(title)).first;
@@ -36,7 +33,7 @@ void main() {
     await tester.tap(find.text('TASTE + CURRENT STATE'));
     await tester.pumpAndSettle();
     expect(find.text("Your preferences haven't changed."), findsOneWidget);
-    expect(find.textContaining('Demo data — not a real check-in'), findsOneWidget);
+    expect(find.textContaining('Demo data — not a real reading'), findsOneWidget);
     expect(find.descendant(of: find.byType(Card), matching: find.text('Se7en')), findsNothing);
     expect(find.text('Strong fit for tonight'), findsWidgets);
 
@@ -76,7 +73,7 @@ void main() {
     expect(find.text("Your preferences haven't changed. Your context has."), findsNothing);
   });
 
-  testWidgets('a stale check-in falls back to taste only and offers a new one (RFC §8)', (tester) async {
+  testWidgets('a stale reading falls back to taste only and offers a new one (RFC §8)', (tester) async {
     var now = DateTime(2026, 9, 28, 19);
     await toTonight(tester, clock: () => now);
     await tester.tap(find.text('TASTE + CURRENT STATE'));
@@ -86,9 +83,9 @@ void main() {
     now = now.add(const Duration(hours: 3));
     await tester.tap(find.text('90 minutes or less')); // any rebuild
     await tester.pumpAndSettle();
-    expect(find.textContaining('Taste only. Your check-in from 3 h ago is too old to use'), findsOneWidget);
+    expect(find.textContaining('Taste only. Your last reading, from 3 h ago, is too old to use'), findsOneWidget);
     expect(find.text("Your preferences haven't changed."), findsNothing);
-    expect(find.text('Check in again'), findsOneWidget);
+    expect(find.text('Connect a source'), findsOneWidget);
   });
 
   testWidgets('an explicit intent works in taste-only mode too, and is named in the reason (RFC §9.6)', (tester) async {

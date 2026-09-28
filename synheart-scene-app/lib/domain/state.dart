@@ -1,116 +1,178 @@
 import 'package:equatable/equatable.dart';
 
-/// A coarse, non-clinical level used on the Current State card.
-enum Level {
-  low('Low'),
-  moderate('Moderate'),
-  high('High');
+/// One HSI axis reading: a 0–1 value and the runtime's confidence in it.
+/// Mirrors `HSIAxisValue` from synheart_core, so the domain and its tests do
+/// not depend on the SDK.
+class AxisReading extends Equatable {
+  const AxisReading(this.value, this.confidence);
 
-  const Level(this.label);
-  final String label;
+  final double value;
+  final double confidence;
 
-  static Level fromValue(double v) => v < 0.36 ? Level.low : (v < 0.66 ? Level.moderate : Level.high);
+  /// Below this, a reading is *unavailable* — never a negative result.
+  /// The same threshold Resona uses.
+  static const minConfidence = 0.45;
 
-  /// A representative value for the level (used when the user adjusts it).
-  double get value => switch (this) {
-        Level.low => 0.2,
-        Level.moderate => 0.5,
-        Level.high => 0.8,
-      };
+  bool get isAvailable => confidence >= minConfidence;
+
+  @override
+  List<Object?> get props => [value, confidence];
 }
 
-/// The kind of experience that fits the current moment.
-enum Experience {
-  unwind('Unwind', 'a good evening to unwind'),
-  stayEngaged('Stay engaged', 'a good evening for something engaging'),
-  liftMe('Lift me up', 'a good evening for something lively'),
-  easyWatch('Easy watch', 'a good evening for an easy watch');
+/// The HSI axes Scene reads.
+enum HsiAxis {
+  focus('Focus'),
+  stress('Stress'),
+  arousal('Arousal'),
+  capacity('Capacity');
 
-  const Experience(this.label, this.phrase);
+  const HsiAxis(this.label);
+  final String label;
+}
+
+/// What kind of evening the current state may suit. Scene's demo policy,
+/// modelled on Resona's flow / clarity / ease, with the same thresholds.
+/// These are demo choices, not health interpretations.
+enum Experience {
+  /// Elevated stress or arousal, or reduced capacity (Resona's "ease").
+  unwind('Unwind', 'a good evening to unwind', 'Your rhythm has picked up', 'Something lighter may help you settle.'),
+
+  /// Focus appears to drift (Resona's "clarity").
+  easyWatch('Easy watch', 'a good evening for an easy watch', 'Your focus seems to be drifting', 'A film that is easy to follow may suit tonight.'),
+
+  /// Focus evidence is strong (Resona's "flow").
+  stayEngaged(
+      'Stay engaged', 'a good evening for something engaging', 'You seem settled and focused', 'A film that asks a little more of you may suit tonight.');
+
+  const Experience(this.label, this.phrase, this.headline, this.message);
   final String label;
 
   /// Tentative phrase for sentences — "This may be a good evening to unwind",
   /// never "You are stressed" (RFC §8).
   final String phrase;
 
+  /// Neutral-language headline and message for the state sheet.
+  final String headline;
+  final String message;
+
   /// The viewing intent this suggests, which the user can accept, change or
-  /// skip on the Current context screen (RFC §4.5).
+  /// skip (RFC §4.5).
   EveningIntent get suggestedIntent => switch (this) {
         Experience.unwind => EveningIntent.unwind,
+        Experience.easyWatch => EveningIntent.entertain,
         Experience.stayEngaged => EveningIntent.engaging,
-        Experience.liftMe || Experience.easyWatch => EveningIntent.entertain,
       };
 }
 
 /// Where the state came from — shown so the demo stays honest.
 enum StateSource {
-  synheart('From your Synheart check-in'),
-  adjusted('Adjusted by you'),
-  preset('Demo data — not a real check-in');
+  synheart('From your wearable, via Synheart'),
+  wearSim('From a WearSim demo source'),
+  preset('Demo data — not a real reading');
 
   const StateSource(this.label);
   final String label;
 }
 
-/// The user's current state in simple, non-clinical terms. This is an input
-/// to personalisation — never a diagnosis — and the user can always adjust it.
+/// The user's current state as HSI axes. This is an input to
+/// personalisation — never a diagnosis. Axes the runtime could not resolve
+/// with enough confidence are treated as unavailable (RFC §6: use only fields
+/// the SDK actually provides, with their quality).
 class CurrentState extends Equatable {
   const CurrentState({
-    required this.energy,
-    required this.mentalLoad,
-    required this.engagement,
+    this.focus,
+    this.stress,
+    this.arousal,
+    this.capacity,
     required this.source,
     this.capturedAt,
   });
 
-  /// How long a check-in stays usable. A tunable default: the RFC leaves the
-  /// freshness rule open (§13).
-  static const freshFor = Duration(hours: 2);
+  final AxisReading? focus;
+  final AxisReading? stress;
+  final AxisReading? arousal;
+  final AxisReading? capacity;
+  final StateSource source;
+
+  /// How long a reading stays usable once the signal stops. A tunable
+  /// default: the RFC leaves the freshness rule open (§13).
+  static const freshFor = Duration(minutes: 30);
 
   /// When the snapshot was taken; null for a preset not yet applied.
   final DateTime? capturedAt;
 
   bool isStaleAt(DateTime now) => capturedAt != null && now.difference(capturedAt!) > freshFor;
 
-  /// 0–1.
-  final double energy;
-  final double mentalLoad;
-  final double engagement;
-  final StateSource source;
+  AxisReading? reading(HsiAxis a) => switch (a) {
+        HsiAxis.focus => focus,
+        HsiAxis.stress => stress,
+        HsiAxis.arousal => arousal,
+        HsiAxis.capacity => capacity,
+      };
 
-  Level get energyLevel => Level.fromValue(energy);
-  Level get mentalLoadLevel => Level.fromValue(mentalLoad);
-  Level get engagementLevel => Level.fromValue(engagement);
-
-  /// The plan's "Suggested Experience" line, derived from the three signals.
-  Experience get suggestedExperience {
-    if (mentalLoad >= 0.66) return Experience.unwind;
-    if (energy < 0.36) return Experience.easyWatch;
-    if (engagement >= 0.66) return Experience.stayEngaged;
-    if (energy >= 0.66) return Experience.liftMe;
-    return Experience.easyWatch;
+  /// The value of an axis, or null when it is missing or below the
+  /// confidence threshold.
+  double? valueOf(HsiAxis a) {
+    final r = reading(a);
+    return r != null && r.isAvailable ? r.value : null;
   }
 
-  CurrentState copyWith({double? energy, double? mentalLoad, double? engagement, StateSource? source, DateTime? capturedAt}) =>
-      CurrentState(
-        energy: energy ?? this.energy,
-        mentalLoad: mentalLoad ?? this.mentalLoad,
-        engagement: engagement ?? this.engagement,
+  List<HsiAxis> get availableAxes => [for (final a in HsiAxis.values) if (valueOf(a) != null) a];
+
+  /// At least one axis is usable. Without that, Scene says there is not
+  /// enough evidence and ranks on taste only.
+  bool get hasEvidence => availableAxes.isNotEmpty;
+
+  /// Resona's policy, adapted: ease first, then clarity, then flow. Null
+  /// means no clear need — a real result, not a failure.
+  Experience? get suggestedExperience {
+    final focus = valueOf(HsiAxis.focus);
+    final stress = valueOf(HsiAxis.stress);
+    final arousal = valueOf(HsiAxis.arousal);
+    final capacity = valueOf(HsiAxis.capacity);
+    if ((stress != null && stress >= .62) || (arousal != null && arousal >= .76) || (capacity != null && capacity <= .35)) {
+      return Experience.unwind;
+    }
+    if (focus != null && focus <= .44) return Experience.easyWatch;
+    if (focus != null && focus >= .60) return Experience.stayEngaged;
+    return null;
+  }
+
+  CurrentState copyWith({StateSource? source, DateTime? capturedAt}) => CurrentState(
+        focus: focus,
+        stress: stress,
+        arousal: arousal,
+        capacity: capacity,
         source: source ?? this.source,
         capturedAt: capturedAt ?? this.capturedAt,
       );
 
-  /// The plan's example state card: moderate energy, high mental load,
-  /// moderate engagement → Unwind.
-  static const planExample = CurrentState(
-    energy: 0.5,
-    mentalLoad: 0.8,
-    engagement: 0.5,
-    source: StateSource.preset,
-  );
+  Map<String, Object?> toJson() => {
+        for (final a in HsiAxis.values)
+          if (reading(a) != null) a.name: [reading(a)!.value, reading(a)!.confidence],
+        'source': source.name,
+        if (capturedAt != null) 'capturedAt': capturedAt!.toIso8601String(),
+      };
+
+  static CurrentState fromJson(Map<String, dynamic> m) {
+    AxisReading? r(HsiAxis a) {
+      final v = m[a.name];
+      return v is List && v.length == 2 ? AxisReading((v[0] as num).toDouble(), (v[1] as num).toDouble()) : null;
+    }
+
+    final at = m['capturedAt'] as String?;
+    return CurrentState(
+      focus: r(HsiAxis.focus),
+      stress: r(HsiAxis.stress),
+      arousal: r(HsiAxis.arousal),
+      capacity: r(HsiAxis.capacity),
+      source: StateSource.values.byName(m['source'] as String),
+      capturedAt: at == null ? null : DateTime.parse(at),
+    );
+  }
 
   @override
-  List<Object?> get props => [energy, mentalLoad, engagement, source, capturedAt];
+  List<Object?> get props => [focus, stress, arousal, capacity, source, capturedAt];
 }
 
 /// "Choose My Evening" — explicit user intent, which always wins over the

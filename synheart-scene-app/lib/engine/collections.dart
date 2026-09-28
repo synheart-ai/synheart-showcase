@@ -41,7 +41,7 @@ Map<Collection, List<Film>> buildCollections(
   return {
     Collection.switchOff: top(pool.where((f) => f.intensity <= 0.45 && f.cognitiveLoad <= 0.5), taste),
     Collection.keepEngaged: top(
-      pool.where((f) => f.cognitiveLoad >= 0.55 && f.intensity <= targets.intensity + 0.25),
+      pool.where((f) => f.cognitiveLoad >= 0.55 && f.intensity <= (targets.intensity ?? 1) + 0.25),
       (f) => 0.6 * taste(f) + 0.4 * f.cognitiveLoad,
     ),
     Collection.familiar: top(pool.where((f) => f.familiarity >= 0.75 && taste(f) >= 0.6), taste),

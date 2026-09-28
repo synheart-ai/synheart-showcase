@@ -42,7 +42,7 @@ class DnaScreen extends StatelessWidget {
         ),
       ]),
       body: PageBody(
-        bottom: FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Start my Synheart check-in')),
+        bottom: FilledButton(onPressed: () => context.push(Routes.tonight), child: const Text("See tonight's picks")),
         children: [
           const Eyebrow('Your baseline'),
           const SizedBox(height: 6),

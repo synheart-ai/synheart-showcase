@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:scene/app/synheart.dart';
+import '../support/fake_signals.dart';
 import 'package:scene/main.dart';
 
 import 'helpers.dart';
@@ -13,19 +13,16 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.pumpWidget(SceneApp(synheart: SynheartService.unavailable()));
+    await tester.pumpWidget(SceneApp(signals: FakeSignals()));
     await tester.pumpAndSettle();
   }
 
   Future<void> toTonight(WidgetTester tester) async {
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Start my Synheart check-in'));
-    await tester.pumpAndSettle();
-    await tapDemo(tester, 'Busy day');
-    await tester.pumpAndSettle();
     await tester.tap(find.text("See tonight's picks"));
     await tester.pumpAndSettle();
+    await useDemo(tester, 'Busy day');
   }
 
   Future<void> expectGuidelines(WidgetTester tester) async {
@@ -40,10 +37,7 @@ void main() {
     await toTonight(tester);
     expect(find.byType(BackButton), findsOneWidget);
 
-    await tester.pageBack(); // → Current context
-    await tester.pumpAndSettle();
-    expect(find.text('Your current context'), findsOneWidget);
-    await tester.pageBack(); // → Movie DNA (the check-in was replaced by its result)
+    await tester.pageBack(); // → Movie DNA (Settings closed itself after demo data)
     await tester.pumpAndSettle();
     expect(find.text('Your Movie DNA'), findsOneWidget);
     await tester.pageBack(); // → Welcome
@@ -51,20 +45,25 @@ void main() {
     expect(find.text('Scene by Synheart'), findsOneWidget);
   });
 
-  testWidgets('Welcome, consent, current context and tonight meet the tap-target, label and contrast guidelines',
+  testWidgets('Welcome, Tonight, the state sheet, Settings and demo picks meet the tap-target, label and contrast guidelines',
       (tester) async {
     final handle = tester.ensureSemantics();
     await start(tester);
     await expectGuidelines(tester);
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Start my Synheart check-in'));
-    await tester.pumpAndSettle();
-    await expectGuidelines(tester);
-    await tapDemo(tester, 'Busy day');
-    await tester.pumpAndSettle();
-    await expectGuidelines(tester);
     await tester.tap(find.text("See tonight's picks"));
+    await tester.pumpAndSettle();
+    await expectGuidelines(tester);
+    await tester.tap(find.byType(ActionChip).first);
+    await tester.pumpAndSettle();
+    await expectGuidelines(tester);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await expectGuidelines(tester);
+    final demo = find.textContaining('Demo data: Busy day');
+    await tester.scrollUntilVisible(demo, 200, scrollable: find.byType(Scrollable).last);
+    await tester.tap(demo);
     await tester.pumpAndSettle();
     await expectGuidelines(tester);
     handle.dispose();
