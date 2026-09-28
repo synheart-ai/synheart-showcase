@@ -56,4 +56,32 @@ void main() {
     expect(find.text('Knives Out'), findsWidgets);
     expect(find.text("Your preferences haven't changed. Your context has."), findsOneWidget);
   });
+
+  testWidgets('Choose My Evening and collections appear with the current state; feedback hides a film', (tester) async {
+    await toTonight(tester);
+    final page = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    await tester.tap(find.text('TASTE + CURRENT STATE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Choose my evening'), findsOneWidget);
+    expect(find.text('90 minutes or less'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('Because you want to switch off'), 300, scrollable: page);
+    expect(find.text('Because you want to switch off'), findsOneWidget);
+
+    // "Wrong for me" on Knives Out drops it from tonight's list.
+    await tester.ensureVisible(find.text('Knives Out').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Knives Out').first, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.text('Why this movie?'), findsOneWidget);
+    await tester.dragUntilVisible(find.text('Wrong for me'), find.text('Your baseline'), const Offset(0, -300));
+    await tester.ensureVisible(find.text('Wrong for me'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Wrong for me'));
+    await tester.pumpAndSettle();
+    expect(find.text('Thanks — Scene will not suggest this film again.'), findsOneWidget);
+    expect(find.text('Anything specific? (optional)'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Knives Out'), findsNothing);
+  });
 }

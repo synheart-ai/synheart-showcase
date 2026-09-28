@@ -8,6 +8,7 @@ import 'picks.dart';
 import 'poster.dart';
 import 'routes.dart';
 import 'theme.dart';
+import 'tonight_extras.dart';
 import 'widgets.dart';
 
 /// Screen 6 — Tonight's Picks, with the key demo toggle (screen 8):
@@ -71,6 +72,10 @@ class TonightScreen extends StatelessWidget {
                         : 'Picked on your taste alone — the way a conventional recommender would.'),
                   ),
           ),
+          if (withState) ...[
+            const SizedBox(height: 16),
+            const ChooseMyEvening(),
+          ],
           const SizedBox(height: 18),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 350),
@@ -85,6 +90,7 @@ class TonightScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (withState) const StateCollections(),
         ],
       ),
     );

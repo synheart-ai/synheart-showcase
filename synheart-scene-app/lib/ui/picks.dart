@@ -9,7 +9,14 @@ List<Recommendation> picksFor(SceneState s, {RecommendationMode? mode, int limit
   final p = s.profile;
   if (p == null) return const [];
   final m = mode ?? s.mode;
-  return _engine.recommend(p, state: m == RecommendationMode.tasteOnly ? null : s.current, context: s.viewing, mode: m, limit: limit);
+  return _engine.recommend(
+    p,
+    state: m == RecommendationMode.tasteOnly ? null : s.current,
+    context: s.viewing,
+    mode: m,
+    limit: limit,
+    hidden: s.hiddenFilmIds,
+  );
 }
 
 /// One film scored the same way the list scored it.

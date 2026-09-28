@@ -6,6 +6,7 @@ import '../engine/recommender.dart';
 import 'picks.dart';
 import 'poster.dart';
 import 'theme.dart';
+import 'tonight_extras.dart';
 import 'widgets.dart';
 
 /// Screen 7 — Why This Movie?: how the baseline and the current state shaped
@@ -73,6 +74,8 @@ class WhyScreen extends StatelessWidget {
             Expanded(child: Text('Overall match', style: t.titleMedium)),
             Text('${r.matchPercent}%', style: t.titleLarge),
           ]),
+          const SizedBox(height: 28),
+          FeedbackPanel(filmId: f.id),
         ],
       ),
     );

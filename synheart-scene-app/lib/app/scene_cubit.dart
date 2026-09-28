@@ -10,6 +10,14 @@ import '../domain/taste.dart';
 import '../engine/recommender.dart';
 import '../engine/taste_builder.dart';
 
+/// Optional reasons after "Not really" / "Wrong for me" (plan §7).
+const feedbackReasons = [
+  'Wrong mood', 'Wrong genre', 'Too intense', 'Too slow', 'Too long', 'Already seen', 'Not interested',
+];
+
+/// Reasons that take a film out of future picks.
+const hidingReasons = {'Already seen', 'Not interested'};
+
 /// Lightweight feedback after a recommendation (plan §7).
 enum Feedback {
   perfect('Perfect'),
@@ -47,6 +55,12 @@ class SceneState extends Equatable {
   final Map<String, (Feedback, Set<String>)> feedback;
 
   bool get hasProfile => profile != null;
+
+  /// Films the user's feedback asked Scene not to suggest again.
+  Set<String> get hiddenFilmIds => {
+        for (final e in feedback.entries)
+          if (e.value.$1 == Feedback.wrongForMe || e.value.$2.any(hidingReasons.contains)) e.key,
+      };
 
   SceneState copyWith({
     TasteAnswers? answers,

@@ -134,18 +134,20 @@ class Recommender {
     );
   }
 
-  /// Ranked recommendations. Films the user has already seen are left out,
-  /// and so are films over the runtime limit.
+  /// Ranked recommendations. Films the user has already seen, films they
+  /// asked not to see again ([hidden]) and films over the runtime limit are
+  /// left out.
   List<Recommendation> recommend(
     TasteProfile p, {
     CurrentState? state,
     ViewingContext context = const ViewingContext(),
     RecommendationMode mode = RecommendationMode.tastePlusState,
     int limit = 5,
+    Set<String> hidden = const {},
   }) {
     final max = context.maxRuntimeMinutes;
     final ranked = pool
-        .where((f) => !p.seenFilmIds.contains(f.id))
+        .where((f) => !p.seenFilmIds.contains(f.id) && !hidden.contains(f.id))
         .where((f) => max == null || f.runtimeMinutes <= max)
         .map((f) => score(f, p, state: state, context: context, mode: mode))
         .toList()
