@@ -1,8 +1,11 @@
 # RFC gaps — what the first build did not meet
 
 Checked 2026-09-28 against [`rfc.md`](rfc.md). The first build followed the demo
-**plan** (PDF). The RFC is stricter in several places. Each gap below is closed in
-its own commit (see `git log`).
+**plan** (PDF). The RFC is stricter in several places.
+
+**Status: all 17 closed on 2026-09-28**, in commits `714e456` (engine), `10b2e53`
+(check-in), `7d9f8ec` (screens), `03947d9` (baseline), `0ffcebe` (events) and
+`3ea9bf5` (accessibility). Each is covered by tests.
 
 | # | RFC | First build | Fix |
 |---|---|---|---|
@@ -34,6 +37,17 @@ its own commit (see `git log`).
 | Processing, storage, retention | On device only. Answers and the derived snapshot are kept in app storage until **Reset demo**. Typed text and raw events are never stored |
 | Tagging and media rights owner | **Open.** Tags are my curation; posters are typographic (no artwork) |
 | Audience and date | **Open** |
+
+## Still open, and not code
+
+- **§6 SDK contract:** Engineering and Research have not agreed the fields,
+  quality rules or freshness. The build documents what it uses in
+  [state-mapping.md](state-mapping.md) and marks every label provisional.
+- **§10 audience check:** whether viewers can say why the top pick changed is a
+  rehearsal question. The event log helps, but only a rehearsal answers it.
+- **Device run of the real typing check-in:** covered by widget tests, since
+  the metrics are computed in Dart. Not yet run on a phone.
+- **Trailers:** no trailer links (RFC §3 makes them optional).
 
 ## Plan vs RFC differences kept on purpose
 

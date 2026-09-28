@@ -38,6 +38,12 @@ current state only changes **which of the films you'd like fit this moment**.
 | State fit | 35% | Synheart |
 | Context fit | 15% | Time / intent / setting |
 
+These are tunable defaults, not a validated formula (RFC §7). When the user
+picks an intent, it takes precedence over the check-in: taste 50 / context 35 /
+state 15. *Based on taste* with an intent is taste 70 / context 30, and no
+check-in is used. Fit is shown in words (*Strong fit for tonight*), never as a
+percentage.
+
 Each film carries genre, intensity, cognitive load, energy, emotional tone,
 runtime and familiarity.
 
@@ -45,8 +51,16 @@ runtime and familiarity.
 
 The check-in uses `synheart_behavior`'s `BehaviorTextField`. The SDK records
 **how** the user types (speed, cadence, gaps, corrections) — never **what**
-they type. Scene maps those timing signals to simple, non-clinical state
-descriptions, and the user can always adjust the result before seeing picks.
+they type.
+
+- **Consent first.** Nothing is collected before the user agrees. The SDK is
+  started on *I agree* and disposed when the check-in closes. There is no
+  app-wide gesture detector and no background collection.
+- **Skip** is always available and leads to taste-only picks.
+- **On device.** The 0.4.1 source has no HTTP client, and Scene sends nothing.
+- The labels (energy, mental load, engagement) are **provisional**. The
+  mapping is documented in [`docs/state-mapping.md`](docs/state-mapping.md).
+- A snapshot is used for 2 hours, then the app falls back to taste only.
 
 ## Supporting features
 
@@ -62,17 +76,47 @@ descriptions, and the user can always adjust the result before seeing picks.
 ## Demo script (about 3 minutes)
 
 1. **Welcome** → *Try the demo profile* (a thriller / sci-fi / crime fan).
-2. **Movie DNA** — point out that this is taste only; Synheart has not been used yet.
-3. **Check-in** — type a sentence or two about the day. Or tap *Use demo
-   scenario* (moderate energy, high mental load, moderate engagement) when a
-   device run is not possible.
-4. **Current State** — read the signals aloud; show that they can be adjusted.
-5. **Tonight's Picks** starts on *Based on taste*: Se7en, Prisoners, Shutter Island, Gone Girl…
-6. Switch to **Taste + current state**. The list changes to Knives Out, The Nice
-   Guys, Catch Me If You Can… Say the line:
-   *"Your preferences haven't changed. Your context has."*
-7. Open a pick → **Why this movie?** — baseline, context, and the 50 / 35 / 15 split.
-8. **What changed?** — both lists side by side, then the closing message.
+2. **Movie DNA** — this is taste only; Synheart has not been used yet. *Edit*
+   changes it without starting over.
+3. **Check-in** — read the consent card aloud, then either type a sentence or
+   two, or pick a **demo data** scenario (labelled as such everywhere):
+   - *Busy day, tired evening* — the ranking changes meaningfully.
+   - *Rested and focused* — the list barely moves, and Scene says so.
+   - *Skip* — taste only, the unavailable-state case.
+4. **Current context** — provisional labels, the check-in time, and a
+   suggested evening the user can accept, change or skip.
+5. **Tonight's Picks** starts on *Based on taste*: Se7en, Ex Machina,
+   Prisoners, Shutter Island, Gone Girl.
+6. Switch to **Taste + current state** (busy evening). The list becomes Glass
+   Onion, Ocean's Eleven, Knives Out, The Nice Guys, The Grand Budapest Hotel.
+   Say the line: *"Your preferences haven't changed. Your context has."*
+7. Open a pick → **Why this movie?** — *Your taste*, *Right now*, *How that
+   affected this pick*, with its taste-only rank.
+8. **What changed?** — each film's movement (↑ from #11, new), what dropped
+   out, then the closing message.
+
+**Reset demo** (Welcome or Movie DNA) clears everything for the next run.
+
+## Privacy and data
+
+| Kept on the device | Never kept |
+|---|---|
+| Ratings, genres, discovery (direct inputs) | Typed text (cleared on continue) |
+| The derived snapshot: three levels, source, time | Raw typing events |
+
+Both are cleared by **Reset demo**. A local event log (in memory, printed
+with `[scene-event]` in debug builds) records demo events with enum names
+and film ids only.
+
+## Offline
+
+Everything works without a network: catalogue, baseline, check-in and
+rankings. There are no trailers or artwork downloads.
+
+## RFC
+
+[`docs/rfc.md`](docs/rfc.md) is the RFC from Notion. [`docs/rfc-gaps.md`](docs/rfc-gaps.md)
+lists what the first build missed and where each gap was closed.
 
 ## Tests
 
@@ -81,10 +125,11 @@ flutter analyze
 flutter test
 ```
 
-The tests pin the plan's demo story: the taste-only list is the dark-thriller
-list, and taste + the plan's example state gives the lighter, still-clever list.
-The live Synheart typing path needs a device or simulator; widget tests cover
-the demo-scenario path.
+The tests pin the demo story and the RFC's rules. They cover all three
+seeded scenarios, consent and skip, and stale state, as well as intent
+precedence, the event log, the accessibility guidelines and 160% text. The
+typing check-in is widget-tested through the SDK's own `BehaviorTextField`;
+the native SDK session is not, so a device run is still worth doing.
 
 ## Run
 
