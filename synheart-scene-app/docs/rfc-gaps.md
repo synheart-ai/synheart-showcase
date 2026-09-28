@@ -32,11 +32,27 @@ Checked 2026-09-28 against [`rfc.md`](rfc.md). The first build followed the demo
 | Decision | Current assumption |
 |---|---|
 | Platform / framework | Flutter, iOS + Android |
-| SDK interaction and outputs | `synheart_behavior` 0.4.1 `BehaviorTextField` typing metrics; see [state-mapping.md](state-mapping.md) |
+| SDK interaction and outputs | `synheart_core` 0.15.0 HSI axes (focus, stress, arousal, capacity) with confidence, from wearable sources; see [state-mapping.md](state-mapping.md) |
 | Real SDK results, seeded data, or both | Both; seeded ones are labelled **Demo data** everywhere they appear |
-| Processing, storage, retention | On device only. Answers and the derived snapshot are kept in app storage until **Reset demo**. Typed text and raw events are never stored |
+| Processing, storage, retention | HSI is computed on device, with cloud upload off. Answers and the latest reading are kept in app storage until **Reset demo**. Raw samples are never stored |
 | Tagging and media rights owner | **Open.** Tags are my curation; posters are typographic (no artwork) |
 | Audience and date | **Open** |
+
+## Update 2026-09-28 — HSI, as in Resona
+
+After the gap work, Scene moved from a typing heuristic to **Synheart Core HSI**
+(commits `4bd0994`, `245f321`, `5b50e7c`). Effect on the RFC:
+
+- **§6 SDK contract:** the app now uses fields the SDK actually provides:
+  HSI axes, each with a confidence. That replaces labels Scene had invented.
+  Low confidence means unavailable (Resona's rule).
+- **§4.4 / §6 consent:** consent is in Settings, before any source. The
+  runtime is given local-only consent.
+- **§9.3 statuses:** listening, not enough signal, signal settling, no clear
+  need, and too old are shown on the state pill and sheet.
+- **§4 flow:** the *Synheart check-in* and *Current context* screens are
+  replaced by Settings (sources) and the state sheet. Tonight is now a
+  browse home. The eight RFC steps are all still there, in that shape.
 
 ## Still open, and not code
 
@@ -45,8 +61,10 @@ Checked 2026-09-28 against [`rfc.md`](rfc.md). The first build followed the demo
   [state-mapping.md](state-mapping.md) and marks every label provisional.
 - **§10 audience check:** whether viewers can say why the top pick changed is a
   rehearsal question. The event log helps, but only a rehearsal answers it.
-- **Device run of the real typing check-in:** covered by widget tests, since
-  the metrics are computed in Dart. Not yet run on a phone.
+- **Device run:** wearables, HealthKit, Health Connect and the native runtime
+  have been built into the app but not yet run on a phone.
+- **Network during `Synheart.initialize()`:** not verified; the consent copy
+  claims only "cloud upload is off".
 - **Trailers:** no trailer links (RFC §3 makes them optional).
 
 ## Plan vs RFC differences kept on purpose
