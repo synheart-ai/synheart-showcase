@@ -7,6 +7,7 @@ import '../app/state_engine.dart';
 import '../domain/state.dart';
 import '../engine/explain.dart';
 import 'routes.dart';
+import 'state_card.dart';
 import 'theme.dart';
 
 /// The state pill and sheet, as in Resona: the current state stays one tap
@@ -116,9 +117,6 @@ class StateView {
   }
 }
 
-/// Words for an axis value — never a raw number (Resona: no medical scores).
-String levelWord(double v) => v < 0.36 ? 'lower' : (v < 0.66 ? 'moderate' : 'higher');
-
 class _StateSheet extends StatelessWidget {
   const _StateSheet();
 
@@ -162,24 +160,7 @@ class _StateSheet extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 14),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Column(children: [
-                    for (final a in HsiAxis.values)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(children: [
-                          Expanded(child: Text(a.label, style: t.titleMedium)),
-                          Text(
-                            reading.valueOf(a) == null ? 'not available' : levelWord(reading.valueOf(a)!),
-                            style: t.titleMedium?.copyWith(color: SceneColors.sage),
-                          ),
-                        ]),
-                      ),
-                  ]),
-                ),
-              ),
+              StateCard(reading: reading),
             ],
             if (engine.isLive && engine.heartRate != null) ...[
               const SizedBox(height: 10),
@@ -208,7 +189,7 @@ class _StateSheet extends StatelessWidget {
             ]),
             const SizedBox(height: 18),
             Text(
-              'Focus, stress, arousal and capacity are computed on this device by Synheart. They are not a diagnosis.',
+              'Computed on this device by Synheart. These are contextual signals, not a diagnosis.',
               style: t.bodyMedium?.copyWith(color: SceneColors.sage),
             ),
             const SizedBox(height: 14),

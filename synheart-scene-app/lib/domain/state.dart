@@ -64,6 +64,41 @@ enum Experience {
       };
 }
 
+/// The plan's plain-language signals (plan §1, §4: "energy, engagement and
+/// mental load"), shown instead of raw HSI axis names so nothing reads like a
+/// diagnosis. **Provisional mapping** — RFC §6 requires Research to approve it:
+/// * Energy ← arousal
+/// * Mental load ← the higher of stress and reduced capacity (1 − capacity)
+/// * Engagement ← focus
+/// Each is derived only from axes that pass the confidence gate.
+enum PlainSignal {
+  energy('Energy'),
+  mentalLoad('Mental load'),
+  engagement('Engagement');
+
+  const PlainSignal(this.label);
+  final String label;
+
+  /// The HSI axes this signal is read from.
+  List<HsiAxis> get sources => switch (this) {
+        PlainSignal.energy => const [HsiAxis.arousal],
+        PlainSignal.mentalLoad => const [HsiAxis.stress, HsiAxis.capacity],
+        PlainSignal.engagement => const [HsiAxis.focus],
+      };
+}
+
+/// Low / Moderate / High, as on the plan's example state card.
+enum SignalLevel {
+  low('Low'),
+  moderate('Moderate'),
+  high('High');
+
+  const SignalLevel(this.label);
+  final String label;
+
+  static SignalLevel of(double v) => v < 0.36 ? low : (v < 0.66 ? moderate : high);
+}
+
 /// Where the state came from — shown so the demo stays honest.
 enum StateSource {
   synheart('From your wearable, via Synheart'),
@@ -118,6 +153,23 @@ class CurrentState extends Equatable {
   }
 
   List<HsiAxis> get availableAxes => [for (final a in HsiAxis.values) if (valueOf(a) != null) a];
+
+  /// A plain signal's 0–1 value, or null when its axes are unavailable.
+  double? plain(PlainSignal p) => switch (p) {
+        PlainSignal.energy => valueOf(HsiAxis.arousal),
+        PlainSignal.engagement => valueOf(HsiAxis.focus),
+        PlainSignal.mentalLoad => () {
+            final stress = valueOf(HsiAxis.stress);
+            final capacity = valueOf(HsiAxis.capacity);
+            final signs = [?stress, if (capacity != null) 1 - capacity];
+            return signs.isEmpty ? null : signs.reduce((a, b) => a > b ? a : b);
+          }(),
+      };
+
+  SignalLevel? levelOf(PlainSignal p) {
+    final v = plain(p);
+    return v == null ? null : SignalLevel.of(v);
+  }
 
   /// At least one axis is usable. Without that, Scene says there is not
   /// enough evidence and ranks on taste only.

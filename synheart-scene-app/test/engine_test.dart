@@ -116,6 +116,21 @@ void main() {
       expect(inBetween.suggestedExperience, isNull, reason: 'no clear need is a real result');
     });
 
+    test('the busy evening reads as the plan\'s example state card (§4)', () {
+      final s = DemoScenario.busyEvening.state;
+      expect(s.levelOf(PlainSignal.energy), SignalLevel.moderate);
+      expect(s.levelOf(PlainSignal.mentalLoad), SignalLevel.high);
+      expect(s.levelOf(PlainSignal.engagement), SignalLevel.moderate);
+      expect(s.suggestedExperience, Experience.unwind);
+    });
+
+    test('a plain signal is unavailable when its readings are', () {
+      const onlyStress = CurrentState(stress: AxisReading(0.7, 0.8), capacity: AxisReading(0.9, 0.2), source: StateSource.preset);
+      expect(onlyStress.levelOf(PlainSignal.mentalLoad), SignalLevel.high, reason: 'capacity is below the gate; stress alone counts');
+      expect(onlyStress.levelOf(PlainSignal.energy), isNull);
+      expect(onlyStress.levelOf(PlainSignal.engagement), isNull);
+    });
+
     test('low-confidence axes are unavailable, never a negative result', () {
       const weak = CurrentState(stress: AxisReading(0.95, 0.44), focus: AxisReading(0.1, 0.2), source: StateSource.preset);
       expect(weak.hasEvidence, isFalse);

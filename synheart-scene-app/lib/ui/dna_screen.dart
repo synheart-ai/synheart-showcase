@@ -129,8 +129,9 @@ class _GenreBar extends StatelessWidget {
         children: [
           Row(children: [
             Expanded(child: Text(label, style: t.titleMedium)),
-            // Words, not percentages: the affinity is not a validated measure (RFC §4.3, §7).
-            Text(value >= 0.75 ? 'Strong' : value >= 0.6 ? 'Clear' : value >= 0.45 ? 'Some' : 'Low', style: t.titleMedium),
+            // As in the plan (§3: "Thriller 92%"). The RFC's no-percentage rule
+            // (§7) is about the match score, not the taste summary.
+            Text('${(value * 100).round()}%', style: t.titleMedium),
           ]),
           const SizedBox(height: 6),
           ClipRRect(

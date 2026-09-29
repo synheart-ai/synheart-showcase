@@ -27,8 +27,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Your Movie DNA'), findsOneWidget);
-    expect(find.text('Strong'), findsWidgets);
-    expect(find.textContaining('%'), findsNothing);
+    expect(find.textContaining('%'), findsWidgets); // plan §3: "Thriller 92%"
     expect(find.text("See tonight's picks"), findsOneWidget);
   });
 

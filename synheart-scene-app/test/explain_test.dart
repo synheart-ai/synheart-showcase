@@ -16,7 +16,7 @@ void main() {
     final e = explain(r, state: DemoScenario.busyEvening.state, usualIntensity: persona.preferredIntensity, tasteOnlyRank: 11);
     expect(e.taste, contains('mystery'));
     expect(e.rightNow, contains('The demo data suggests this may be a good evening to unwind'));
-    expect(e.rightNow, contains('Based on focus, stress, arousal and capacity.'));
+    expect(e.rightNow, contains('Based on energy (moderate), mental load (high) and engagement (moderate).'));
     expect(e.rightNow, contains('lower intensity than you usually choose'));
     expect(e.rightNow, contains('entertaining rather than emotionally heavy'));
     expect(e.effect, contains('Taste counted for 50%, your current state for 35% and your choices for 15%'));

@@ -83,7 +83,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Your rhythm has picked up'), findsOneWidget);
     expect(find.textContaining('From your wearable, via Synheart'), findsOneWidget);
-    expect(find.text('not available'), findsNWidgets(2)); // focus and arousal were not in the reading
+    // The plan's card: stress + capacity give mental load; energy (arousal) and
+    // engagement (focus) were not in the reading.
+    expect(find.text('Mental load'), findsOneWidget);
+    expect(find.text('High'), findsOneWidget);
+    expect(find.text('Not available'), findsNWidgets(2));
     expect(find.text('Help me unwind (suggested)'), findsOneWidget);
   });
 

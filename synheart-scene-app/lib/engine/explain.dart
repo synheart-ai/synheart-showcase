@@ -85,8 +85,9 @@ Explanation explain(
     StateSource.wearSim => ('The WearSim demo readings', ''),
     StateSource.preset => ('The demo data', 's'),
   };
-  final used = st.availableAxes.map((a) => a.label.toLowerCase()).toList();
-  final missing = [for (final a in HsiAxis.values) if (!st.availableAxes.contains(a)) a.label.toLowerCase()];
+  // In the plan's plain language, not raw HSI axis names.
+  final used = [for (final p in PlainSignal.values) if (st.plain(p) != null) '${p.label.toLowerCase()} (${st.levelOf(p)!.label.toLowerCase()})'];
+  final missing = [for (final p in PlainSignal.values) if (st.plain(p) == null) p.label.toLowerCase()];
   final basis = 'Based on ${_join(used)}${missing.isEmpty ? '' : ' (${_join(missing)} not available)'}.';
   final need = st.suggestedExperience;
   final rightNow = [
