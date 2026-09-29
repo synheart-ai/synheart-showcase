@@ -181,6 +181,37 @@ void main() {
     expect(find.text('Do a Synheart check-in'), findsOneWidget);
   });
 
+  testWidgets('"not enough signal" is logged once, although readings keep arriving', (tester) async {
+    await toTonight(tester);
+    tester.view.physicalSize = const Size(1170, 7000);
+    await tester.tap(find.text('Do a Synheart check-in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('I agree — continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose a source'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bluetooth heart-rate monitor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Polar H10'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start check-in'));
+    await tester.pump();
+    await tester.pump(const Duration(minutes: 3, seconds: 1)); // the timeout
+    await tester.pump();
+    expect(find.text('Not enough signal'), findsOneWidget);
+
+    // As on device: the runtime keeps closing empty windows after collection stops.
+    const empty = CurrentState(stress: AxisReading(0.1, 0.0), source: StateSource.synheart);
+    for (var i = 0; i < 5; i++) {
+      fake.emit(empty);
+      await tester.pump(const Duration(minutes: 1));
+    }
+    final log = tester.element(find.byType(Scaffold).last).read<SceneCubit>().log;
+    expect(log.entries.where((e) => e.event == DemoEvent.checkInInsufficientSignal), hasLength(1));
+  });
+
   testWidgets('demo data and consent are logged, with no signal values', (tester) async {
     await toTonight(tester);
     await useDemo(tester, 'Busy day');

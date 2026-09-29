@@ -30,6 +30,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
   Timer? _tick;
   bool _left = false;
 
+  /// The phase last seen, so an outcome is logged once per check-in: the
+  /// engine notifies on every reading, and the runtime keeps closing (empty)
+  /// windows after collection stops.
+  CheckInPhase? _lastPhase;
+
   @override
   void initState() {
     super.initState();
@@ -55,15 +60,19 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   void _onEngine() {
     if (_left || !mounted) return;
-    if (_engine.checkIn == CheckInPhase.done) {
+    final phase = _engine.checkIn;
+    final changed = phase != _lastPhase;
+    _lastPhase = phase;
+    if (!changed) return;
+    if (phase == CheckInPhase.done) {
       _left = true;
       _log.record(DemoEvent.checkInSucceeded, {'source': _engine.checkInResult?.source.name ?? ''});
       _engine.resetCheckIn();
       // Replace: Back from the result should not reopen the check-in.
       context.pushReplacement(Routes.state);
-    } else if (_engine.checkIn == CheckInPhase.notEnoughSignal) {
+    } else if (phase == CheckInPhase.notEnoughSignal) {
       _log.record(DemoEvent.checkInInsufficientSignal);
-    } else if (_engine.checkIn == CheckInPhase.failed) {
+    } else if (phase == CheckInPhase.failed) {
       _log.record(DemoEvent.checkInFailed);
     }
   }
