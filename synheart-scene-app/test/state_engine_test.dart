@@ -7,7 +7,8 @@ import 'package:scene/domain/state.dart';
 import 'support/fake_signals.dart';
 
 const unwind = CurrentState(stress: AxisReading(0.8, 0.8), source: StateSource.synheart);
-const weak = CurrentState(stress: AxisReading(0.9, 0.3), source: StateSource.synheart);
+// Zero confidence: below the (temporary) "above 0" gate.
+const weak = CurrentState(stress: AxisReading(0.9, 0.0), source: StateSource.synheart);
 
 void main() {
   late FakeSignals fake;
@@ -124,14 +125,14 @@ void main() {
         fakeAsync((async) {
           timeOut(async, () {
             fake.heartRateCtl.add(72);
-            fake.emit(weak); // stress at 0.30
-            fake.emit(const CurrentState(stress: AxisReading(0.5, 0.41), arousal: AxisReading(0.5, 0.2), source: StateSource.synheart));
+            fake.emit(weak);
+            fake.emit(const CurrentState(stress: AxisReading(0.5, 0.0), arousal: AxisReading(0.5, 0.0), source: StateSource.synheart));
           });
           final d = engine.diagnostics!;
           expect(d.readings, 2);
-          expect(d.best[HsiAxis.stress], 0.41);
-          expect(d.best[HsiAxis.arousal], 0.2);
-          expect(d.diagnosis, contains('Stress at 0.41'));
+          expect(d.best[HsiAxis.stress], 0.0);
+          expect(d.best[HsiAxis.arousal], 0.0);
+          expect(d.diagnosis, contains('at 0.00'));
         });
       });
 

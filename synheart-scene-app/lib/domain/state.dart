@@ -9,11 +9,20 @@ class AxisReading extends Equatable {
   final double value;
   final double confidence;
 
-  /// Below this, a reading is *unavailable* — never a negative result.
-  /// The same threshold Resona uses.
-  static const minConfidence = 0.45;
+  /// A reading is available when its confidence is **above** this;
+  /// otherwise it is *unavailable* — never a negative result.
+  ///
+  /// TEMPORARY (2026-09-29, product decision): any confidence above 0 counts,
+  /// so heart-rate-only sources such as the Galaxy Watch (confidences
+  /// 0.01–0.17 on device, below the HR-only ceilings in the research
+  /// ruling) still produce a reading. Resona's gate, and Scene's before
+  /// this, is 0.45 — see [resonaMinConfidence]. Revisit before a real demo.
+  static const minConfidence = 0.0;
 
-  bool get isAvailable => confidence >= minConfidence;
+  /// The gate Resona uses; the value to return to.
+  static const resonaMinConfidence = 0.45;
+
+  bool get isAvailable => confidence > minConfidence;
 
   @override
   List<Object?> get props => [value, confidence];

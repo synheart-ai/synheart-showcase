@@ -35,7 +35,10 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 
 ## Quality rules
 
-- **Confidence:** an axis with confidence **< 0.45** is *unavailable*, never a
+- **Confidence (temporary, 2026-09-29):** an axis is *available* when its
+  confidence is **above 0**. Before this — and in Resona — the gate was **0.45**;
+  it was lowered so a heart-rate-only watch still gives a reading. Revisit it.
+- **Confidence (with the 0.45 gate):** an axis with confidence **< 0.45** is *unavailable*, never a
   negative result (Resona's rule).
 - **Not enough evidence:** no axis is available. The state is not used, the
   list is taste only, and the app says so.

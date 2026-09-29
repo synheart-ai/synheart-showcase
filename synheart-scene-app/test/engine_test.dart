@@ -131,8 +131,17 @@ void main() {
       expect(onlyStress.levelOf(PlainSignal.engagement), isNull);
     });
 
-    test('low-confidence axes are unavailable, never a negative result', () {
-      const weak = CurrentState(stress: AxisReading(0.95, 0.44), focus: AxisReading(0.1, 0.2), source: StateSource.preset);
+    test('the gate is temporarily "above 0": a heart-rate-only watch reading counts', () {
+      // What the Galaxy Watch6 gave on device, 2026-09-29 (Focus 0.17, Arousal 0.14).
+      const watch = CurrentState(focus: AxisReading(0.0, 0.17), arousal: AxisReading(0.5, 0.14), source: StateSource.synheart);
+      expect(AxisReading.minConfidence, 0.0);
+      expect(watch.availableAxes, [HsiAxis.focus, HsiAxis.arousal]);
+      expect(watch.hasEvidence, isTrue);
+      expect(const AxisReading(0.5, 0.0).isAvailable, isFalse);
+    });
+
+    test('zero-confidence axes are unavailable, never a negative result', () {
+      const weak = CurrentState(stress: AxisReading(0.95, 0.0), focus: AxisReading(0.1, 0.0), source: StateSource.preset);
       expect(weak.hasEvidence, isFalse);
       expect(weak.suggestedExperience, isNull);
       // No usable axis → the ranking is taste only.

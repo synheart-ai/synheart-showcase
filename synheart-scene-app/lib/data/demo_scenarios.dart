@@ -32,14 +32,15 @@ enum DemoScenario {
     ),
   ),
 
-  /// Every axis below the confidence threshold: not enough evidence, so
-  /// Scene ranks on taste only and says why (RFC §10's "unavailable state").
+  /// Every axis at zero confidence: not enough evidence, so Scene ranks on
+  /// taste only and says why (RFC §10's "unavailable state"). Zero, because
+  /// the gate is temporarily "above 0" (see [AxisReading.minConfidence]).
   lowConfidence(
     'Signal too weak',
     'Shows the not-enough-evidence path',
     CurrentState(
-      focus: AxisReading(0.30, 0.20),
-      stress: AxisReading(0.90, 0.30),
+      focus: AxisReading(0.30, 0.0),
+      stress: AxisReading(0.90, 0.0),
       source: StateSource.preset,
     ),
   );

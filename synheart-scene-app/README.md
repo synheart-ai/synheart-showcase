@@ -28,7 +28,7 @@ Apple Health / Health Connect / BLE heart-rate monitor / WearSim
              on-device HSI: focus · stress · arousal · capacity
                          │   (each with a confidence)
                          ▼
-     confidence gate (≥ 0.45) → experience policy (Resona's thresholds)
+     confidence gate (> 0, temporary; Resona's is ≥ 0.45) → experience policy (Resona's thresholds)
                          │
                          ▼
       taste 50 · state 35 · context 15  →  explain  →  user decides

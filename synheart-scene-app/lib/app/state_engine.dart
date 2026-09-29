@@ -233,7 +233,7 @@ class SceneStateEngine extends ChangeNotifier {
     _checkIn = CheckInPhase.reading;
     _checkInStartedAt = _clock();
     final diag = _diag = CheckInDiagnostics(chosenName ?? chosen.source.label, _checkInStartedAt!);
-    CheckInDiagnostics.log('check-in started · source ${diag.source} · gate ${AxisReading.minConfidence} · runtime ${backend.diagnostics()}');
+    CheckInDiagnostics.log('check-in started · source ${diag.source} · gate >${AxisReading.minConfidence} · runtime ${backend.diagnostics()}');
     _diagTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       CheckInDiagnostics.log('${_clock().difference(diag.startedAt).inSeconds}s · ${diag.summary(_clock()).join(' · ')} · runtime ${backend.diagnostics()}');
     });

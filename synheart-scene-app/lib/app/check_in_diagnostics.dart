@@ -56,7 +56,7 @@ class CheckInDiagnostics {
       return 'Synheart produced $readings readings, but none carried a Focus, Stress, Arousal or Capacity value.';
     }
     return 'Synheart produced $readings readings. The most confident was ${s.key.label} at '
-        '${s.value.toStringAsFixed(2)}; Scene needs ${AxisReading.minConfidence.toStringAsFixed(2)}.';
+        '${s.value.toStringAsFixed(2)}; Scene needs more than ${AxisReading.minConfidence.toStringAsFixed(2)}.';
   }
 
   /// One line per fact, for the Details section and the log.
@@ -67,7 +67,7 @@ class CheckInDiagnostics {
         'Synheart readings: $readings',
         if (best.isNotEmpty)
           'Best confidence: ${[for (final e in best.entries) '${e.key.label} ${e.value.toStringAsFixed(2)}'].join(', ')}',
-        'Needed: ${AxisReading.minConfidence.toStringAsFixed(2)} on at least one axis',
+        'Needed: more than ${AxisReading.minConfidence.toStringAsFixed(2)} on at least one axis',
       ];
 
   static String describeReading(CurrentState r) => [
