@@ -3,7 +3,7 @@
 > Taste tells us what you like. Your state helps us understand what might fit right now.
 
 A mobile cinema-recommendation **demo** built on the Synheart Human State
-Interface (HSI). If [Resona](../synheart-showcase/resona) is a state-aware
+Interface (HSI). If [Resona](../resona) is a state-aware
 Spotify, Scene is a state-aware Netflix. It first learns a person's movie
 taste, then combines that baseline with their current state to answer one
 question: **"What should I watch right now?"**
