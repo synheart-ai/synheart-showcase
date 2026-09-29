@@ -59,10 +59,13 @@ class TonightScreen extends StatelessWidget {
       event: DemoEvent.recommendationsViewed,
       fields: {'mode': picks.mode.name, 'stale': '${picks.isStale}'},
       child: Scaffold(
+        // No title: at 390 pt the back arrow, Movie DNA, Settings and the state
+        // pill leave a title no room (it was squeezed to 30 pt, 1:1 contrast).
+        // The page itself starts with "#1 TONIGHT".
         appBar: AppBar(
-          title: const Text('Scene'),
           actions: [
             IconButton(tooltip: 'Movie DNA', icon: const Icon(Icons.person_outline), onPressed: () => context.push(Routes.dna)),
+            const SettingsButton(),
             const Padding(padding: EdgeInsets.only(right: 12), child: StatePill()),
           ],
         ),

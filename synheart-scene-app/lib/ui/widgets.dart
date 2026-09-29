@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
+import 'routes.dart';
 import 'theme.dart';
 
 /// Small caps label above a title ("SCENE", "YOUR MOVIE DNA" …).
@@ -54,6 +56,19 @@ class PageBody extends StatelessWidget {
             if (bottom != null) Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 16), child: bottom),
           ],
         ),
+      );
+}
+
+/// Opens Settings (consent, wearable source, demo data). On every main
+/// screen, so choosing or testing a source is never more than one tap away.
+class SettingsButton extends StatelessWidget {
+  const SettingsButton({super.key});
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: 'Settings',
+        icon: const Icon(Icons.settings_outlined),
+        onPressed: () => context.push(Routes.settings),
       );
 }
 

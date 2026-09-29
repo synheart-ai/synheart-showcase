@@ -24,7 +24,7 @@ class CurrentStateScreen extends StatelessWidget {
 
     if (reading == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Your current state')),
+        appBar: AppBar(title: const Text('Your current state'), actions: const [SettingsButton()]),
         body: PageBody(
           bottom: FilledButton(onPressed: () => context.pushReplacement(Routes.checkIn), child: const Text('Do a Synheart check-in')),
           children: const [Callout(child: Text('No check-in yet.'))],
@@ -42,7 +42,7 @@ class CurrentStateScreen extends StatelessWidget {
             : 'This may be ${need.phrase}.';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your current state')),
+      appBar: AppBar(title: const Text('Your current state'), actions: const [SettingsButton()]),
       body: PageBody(
         bottom: FilledButton(onPressed: () => context.go(Routes.tonight), child: const Text("See tonight's picks")),
         children: [

@@ -58,7 +58,7 @@ void main() {
     await tester.tap(find.byType(ActionChip).first);
     await tester.pumpAndSettle();
     await expectGuidelines(tester);
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(sheetSettings());
     await tester.pumpAndSettle();
     await expectGuidelines(tester);
     final demo = find.textContaining('Demo data: Busy day');

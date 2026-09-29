@@ -44,8 +44,8 @@ class WelcomeScreen extends StatelessWidget {
           ],
         ),
         children: [
-          const SizedBox(height: 40),
-          const Eyebrow('Scene'),
+          const SizedBox(height: 24),
+          const Row(children: [Expanded(child: Eyebrow('Scene')), SettingsButton()]),
           const SizedBox(height: 12),
           Text('Scene by Synheart', style: t.displaySmall),
           const SizedBox(height: 8),
@@ -69,7 +69,8 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Powered by Synheart — on this device, how you type, never what you type. Nothing is collected until you agree.',
+                  'Powered by Synheart — reads your heart rhythm on this device during a short check-in. '
+                  'Nothing is collected until you agree, and raw heart data is never stored.',
                   style: t.bodyMedium?.copyWith(color: SceneColors.sage),
                 ),
               ),

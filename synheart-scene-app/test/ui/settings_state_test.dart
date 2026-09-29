@@ -28,11 +28,33 @@ void main() {
   }
 
   Future<void> openSettings(WidgetTester tester) async {
-    await tester.tap(find.byType(ActionChip).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(appBarSettings());
     await tester.pumpAndSettle();
   }
+
+  testWidgets('Settings is one tap away on Welcome, Movie DNA and Tonight', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(SceneApp(signals: FakeSignals()));
+    await tester.pumpAndSettle();
+
+    Future<void> opensSettings() async {
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+
+    await opensSettings(); // Welcome, before any profile or consent
+    await tester.tap(find.text('Try the demo profile'));
+    await tester.pumpAndSettle();
+    await opensSettings(); // Movie DNA
+    await tester.tap(find.text("Skip — see tonight's picks"));
+    await tester.pumpAndSettle();
+    await opensSettings(); // Tonight
+  });
 
   testWidgets('with no state the pill and sheet say so, and picks are taste only', (tester) async {
     await toTonight(tester);

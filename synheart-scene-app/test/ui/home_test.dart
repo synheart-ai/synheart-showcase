@@ -25,7 +25,7 @@ void main() {
 
   testWidgets('taste only: the hero is the top pick, then the top five and "Because you like" rows', (tester) async {
     await toHome(tester);
-    expect(find.text('Scene'), findsOneWidget);
+    expect(appBarSettings(), findsOneWidget);
     expect(find.text('#1 TONIGHT'), findsOneWidget);
     expect(find.descendant(of: find.byType(Card).first, matching: find.text('Se7en')), findsWidgets); // poster art + title
     await tester.scrollUntilVisible(find.text("Tonight's top 5"), 300, scrollable: page());

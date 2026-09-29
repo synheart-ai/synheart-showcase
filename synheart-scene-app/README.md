@@ -49,7 +49,7 @@ judgement. Scene then ranks on taste only and says so. The full mapping is in
 | Current State | The plan's card: Energy, Mental load, Engagement, Suggested experience; the suggested evening to accept, change or skip |
 | **Home (Tonight)** | The Taste only ⇄ Taste + current state toggle, a hero for the #1 pick, tonight's top five, Choose My Evening, then browse rows |
 | State pill and sheet | The latest check-in in plain words, its age, and Check in again |
-| Settings | Consent; choose and test a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim) — paused on leaving; demo data |
+| Settings (⚙ on Welcome, Movie DNA, Tonight, the check-in and Current State) | Consent; choose and test a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim) — paused on leaving; demo data |
 | Why this movie? | *Your taste* / *Right now* / *How that affected this pick*, from the ranking's own numbers |
 | What changed? | Both rankings, each film's movement, and an honest "no meaningful change" |
 

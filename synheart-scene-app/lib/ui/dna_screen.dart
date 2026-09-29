@@ -40,6 +40,7 @@ class DnaScreen extends StatelessWidget {
             context.go(Routes.welcome);
           }),
         ),
+        const SettingsButton(),
       ]),
       body: PageBody(
         bottom: Column(mainAxisSize: MainAxisSize.min, children: [

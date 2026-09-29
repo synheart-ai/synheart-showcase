@@ -92,7 +92,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   Widget build(BuildContext context) {
     final engine = context.watch<SceneStateEngine>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Synheart check-in')),
+      appBar: AppBar(title: const Text('Synheart check-in'), actions: const [SettingsButton()]),
       body: PageBody(
         children: [
           if (!engine.consented)
