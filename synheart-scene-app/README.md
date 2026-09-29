@@ -44,10 +44,12 @@ judgement. Scene then ranks on taste only and says so. The full mapping is in
 |---|---|
 | Welcome | Find the right movie for right now |
 | Build movie profile | Rate a curated set (Love / Like / Not for me / Haven't seen), pick genres, Familiar ↔ Surprise me; every step can be skipped |
-| Movie DNA | The baseline, in words; edit it or reset the demo |
+| Movie DNA | The baseline (genre percentages and qualities); edit it or reset the demo |
+| **Synheart check-in** | Consent, then "Sit back for a minute" while Synheart reads the chosen wearable; ends at the first confident reading. **The only time Scene collects** |
+| Current State | The plan's card: Energy, Mental load, Engagement, Suggested experience; the suggested evening to accept, change or skip |
 | **Home (Tonight)** | The Taste only ⇄ Taste + current state toggle, a hero for the #1 pick, tonight's top five, Choose My Evening, then browse rows |
-| State pill and sheet | As in Resona: the current state in neutral words, reading age, live BPM, suggested evening |
-| Settings | Consent, then a source: Apple Health / Health Connect, Bluetooth HRM, WearSim; demo data |
+| State pill and sheet | The latest check-in in plain words, its age, and Check in again |
+| Settings | Consent; choose and test a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim) — paused on leaving; demo data |
 | Why this movie? | *Your taste* / *Right now* / *How that affected this pick*, from the ranking's own numbers |
 | What changed? | Both rankings, each film's movement, and an honest "no meaningful change" |
 
@@ -119,26 +121,37 @@ count.
 > yet**. TMDB is free for non-commercial use; confirm the licence before
 > sharing the demo externally (RFC §12).
 
-## Connect a source
+## The check-in and its source
 
-1. On the home screen, tap the state pill, then **Settings**.
+1. From Movie DNA tap **Start my Synheart check-in** (or *Do a Synheart
+   check-in* on the home screen).
 2. Read the consent card and tap **I agree**. Nothing is collected before this.
-3. Choose **Apple Health / Health Connect**, a **Bluetooth heart-rate monitor**
-   (scan, then tap it), or a **WearSim** link. A `wearsim://pair?endpoint=ws://…`
-   link opens Scene directly, or you can paste it.
-4. Each source asks only for its own permissions. **Disconnect** or **Withdraw
-   consent** at any time.
+3. **Choose a source** (once): the **Galaxy Watch** app, a **Bluetooth
+   heart-rate strap** (scan, then tap it), **Apple Health / Health Connect**, or
+   a **WearSim** link (`wearsim://pair?endpoint=ws://…` opens Scene directly, or
+   paste it). Settings shows the live BPM so you can test it; leaving Settings
+   stops it.
+4. Tap **Start check-in** and sit back. It usually takes one to two minutes
+   (HSI windows are about 60 s), ends at the first confident reading, and
+   **stops collecting**. After 3 minutes without one it says *Not enough
+   signal* — try again, use taste only, or change the source.
+
+The strap sends RR intervals as well as heart rate, so it usually gives the
+fuller reading; the watch sends heart rate only.
 
 ## Demo script (about 3 minutes)
 
 1. **Welcome** → *Try the demo profile* (a thriller / sci-fi / crime fan).
 2. **Movie DNA** — this is taste only; Synheart has not been used yet.
-3. **Home** on *Based on taste*: Se7en leads, then Ex Machina, Prisoners,
-   Shutter Island and Gone Girl. Below them are "Because you like …" rows.
-4. Tap the **state pill** → Settings → a live source, or **demo data**:
+3. **Start my Synheart check-in** — *"But what I normally like is not
+   necessarily what fits every evening."* Run it live, or use **demo data**:
    - *Busy day, tired evening* — the ranking changes meaningfully.
    - *Rested and focused* — the list barely moves, and Scene says so.
    - *Signal too weak* — not enough evidence, so taste only.
+4. **Current State** — the plan's card. The busy evening reads Energy
+   *Moderate*, Mental load *High*, Engagement *Moderate* → *Unwind*.
+   See tonight's picks: the home starts on *Based on taste* — Se7en, Ex
+   Machina, Prisoners, Shutter Island, Gone Girl.
 5. Switch to **Taste + current state** (busy evening). The top five becomes
    Glass Onion, Ocean's Eleven, The Nice Guys, Knives Out and Hot Fuzz. The
    fifth slot is a near-tie with Catch Me If You Can. Say the line:

@@ -54,6 +54,22 @@ After the gap work, Scene moved from a typing heuristic to **Synheart Core HSI**
   replaced by Settings (sources) and the state sheet. Tonight is now a
   browse home. The eight RFC steps are all still there, in that shape.
 
+## Update 2026-09-29 — back in line with the plan and RFC
+
+A review against both documents found three drifts from the HSI move, now fixed
+(`e28cd30`, `aee7a22`):
+
+1. **The check-in moment was gone** (plan §4, §10; RFC §4.4). Restored as its
+   own screen, followed by a Current State screen.
+2. **Continuous collection edged into RFC §5's out-of-scope "passive
+   background collection".** Scene now collects only during a check-in.
+3. **Raw axis names ("Stress: higher") replaced the plan's plain language.**
+   The card shows Energy / Mental load / Engagement again, with a provisional
+   mapping.
+
+Also restored: Movie DNA percentages (plan §3). The RFC's no-percentage rule
+is about the match score.
+
 ## Still open, and not code
 
 - **§6 SDK contract:** Engineering and Research have not agreed the fields,

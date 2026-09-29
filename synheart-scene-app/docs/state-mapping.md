@@ -26,7 +26,7 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 | Inputs pushed | heart rate, RR intervals, vendor HRV (RMSSD); accelerometer from WearSim |
 | Consent to the runtime | `biosignals: true`; `behavior`, `phoneContext`, `allowCloud`, `allowResearch`, `allowVendorSync`, `syni`: all `false` |
 | Task type | Not set. It modulates confidence, and choosing a film is not a focus task |
-| Collection window | From "I agree" in Settings until the source is disconnected or consent is withdrawn |
+| Collection window | **Only during a check-in**: from *Start check-in* until the first confident reading, a 3-minute timeout, or Cancel. Settings may connect a source to test it and stops it on leaving. Readings outside a check-in never reach the picks (RFC §5: no passive background collection) |
 
 > **GAP:** "Cloud upload is off" is guaranteed by the consent form above.
 > Whether `Synheart.initialize()` itself contacts a server (for example, for
@@ -39,9 +39,10 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
   negative result (Resona's rule).
 - **Not enough evidence:** no axis is available. The state is not used, the
   list is taste only, and the app says so.
-- **Publishing:** a reading changes the ranking only on the first evidence,
-  when a new need is confirmed by **two consecutive windows**, or every
-  **5 minutes**. Liveness (samples within 45 s) is shown, but never re-ranks.
+- **Check-in result:** the first reading with at least one available axis
+  becomes the check-in's result and is published to the picks; collection
+  then stops. None within **3 minutes** → *Not enough signal*. Liveness
+  (samples within 45 s) is shown during the check-in.
 - **Freshness:** a published reading is used for **30 minutes** after it was
   taken. After that, picks are taste only.
 
@@ -71,12 +72,22 @@ the axes that are available. A missing axis sets no target.
 State fit is the weighted closeness over the targets that exist (intensity
 0.40, cognitive load 0.25, energy 0.15, tone 0.20), and 0.5 when none exist.
 
-## What the user sees
+## What the user sees — the plan's plain signals
 
-Words, never raw numbers: each axis is *lower* (< 0.36), *moderate* or
-*higher* (≥ 0.66), or *not available*. Heart rate is shown only as a live
-BPM indicator. Headlines are neutral and tentative ("Your rhythm has picked
-up", "This may be a good evening to unwind").
+The Current State card uses the plan's language (plan §1, §4), not raw HSI
+axis names. **Provisional mapping — needs Research approval (RFC §6):**
+
+| Shown as | From | Level |
+|---|---|---|
+| Energy | arousal | Low < 0.36 ≤ Moderate < 0.66 ≤ High |
+| Mental load | the higher of stress and 1 − capacity | same |
+| Engagement | focus | same |
+| Suggested experience | the policy above | Unwind / Easy watch / Stay engaged / No clear need |
+
+Only axes that pass the confidence gate count; otherwise *Not available*.
+The raw readings are under *Details*. The busy-evening demo data reads
+exactly as the plan's example card: Moderate / High / Moderate → Unwind.
+Heart rate is shown only as a live BPM indicator during a check-in.
 
 ## Demo data
 
