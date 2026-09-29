@@ -55,5 +55,8 @@ class FakeSignals implements SignalBackend {
     return watchName!;
   }
 
+  @override
+  Map<String, Object?> diagnostics() => const {'backend': 'fake'};
+
   void emit(CurrentState s) => readingsCtl.add(s);
 }

@@ -54,6 +54,9 @@ abstract class SignalBackend {
 
   /// Disconnect whichever source is active; the runtime keeps running.
   Future<void> disconnectSource();
+
+  /// Runtime status and sample counters for the `[scene-signal]` log.
+  Map<String, Object?> diagnostics();
 }
 
 /// The real backend: synheart_core's runtime and wearable modules, wired the
@@ -72,6 +75,53 @@ class SynheartSignals implements SignalBackend {
   StreamSubscription<dynamic>? _socketSamples;
   bool _bleConnected = false;
   bool _running = false;
+
+  // Diagnostics: what was handed to the runtime, and how far each sample's own
+  // timestamp was from the phone's clock (a batched or mis-stamped source
+  // shows up here).
+  int _hrPushed = 0;
+  int _rrPushed = 0;
+  int? _minSkewMs;
+  int? _maxSkewMs;
+
+  void _pushHr(int tsMs, double bpm, String provider) {
+    final skew = DateTime.now().millisecondsSinceEpoch - tsMs;
+    _hrPushed++;
+    _minSkewMs = _minSkewMs == null || skew < _minSkewMs! ? skew : _minSkewMs;
+    _maxSkewMs = _maxSkewMs == null || skew > _maxSkewMs! ? skew : _maxSkewMs;
+    Synheart.pushWearHr(tsMs, bpm, provider: provider);
+  }
+
+  void _pushRr(int tsMs, List<double> rr, String provider) {
+    _rrPushed += rr.length;
+    Synheart.pushRrBatch(tsMs, rr, provider: provider);
+  }
+
+  @override
+  Map<String, Object?> diagnostics() {
+    // Diagnostics must never take the app down: each SDK getter is guarded.
+    Object? safe(Object? Function() read) {
+      try {
+        return read();
+      } catch (e) {
+        return 'error: $e';
+      }
+    }
+
+    final features = safe(() => Synheart.lastFeatures);
+    return {
+      'initialized': safe(() => Synheart.isInitialized),
+      'session': safe(() => Synheart.isSessionRunning),
+      'runtime': safe(() => Synheart.runtimeVersion),
+      'hrPushed': _hrPushed,
+      'rrPushed': _rrPushed,
+      // Phone clock minus the sample's own timestamp, min..max.
+      'sampleAgeMs': _minSkewMs == null ? null : '$_minSkewMs..$_maxSkewMs',
+      'droppedHsi': safe(() => Synheart.droppedHsiFrames),
+      // null here means no runtime is loaded: pushes are then silently dropped.
+      'features': features is String && features.length > 300 ? '${features.substring(0, 300)}…' : features,
+    };
+  }
 
   // The Scene watch app, via the phone-side WatchRelay (android/app).
   static const _watch = MethodChannel('ai.synheart.scene/watch');
@@ -162,10 +212,10 @@ class SynheartSignals implements SignalBackend {
       final hr = sample.hr;
       if (hr != null && hr > 0) {
         _heartRate.add(hr);
-        Synheart.pushWearHr(ts, hr, provider: 'sdk_wear');
+        _pushHr(ts, hr, 'sdk_wear');
       }
       final rr = sample.rrIntervals?.where((v) => v > 0).toList(growable: false) ?? const <double>[];
-      if (rr.isNotEmpty) Synheart.pushRrBatch(ts, rr, provider: 'sdk_wear');
+      if (rr.isNotEmpty) _pushRr(ts, rr, 'sdk_wear');
       final hrv = sample.hrvRmssd;
       if (hrv != null && hrv > 0) Synheart.pushVendorHrv(ts, rmssd: hrv, provider: 'sdk_wear');
     }, onError: _readings.addError);
@@ -195,9 +245,9 @@ class SynheartSignals implements SignalBackend {
     _bleSamples = _ble.onHeartRate.listen((sample) {
       if (sample.bpm <= 0) return;
       _heartRate.add(sample.bpm);
-      Synheart.pushWearHr(sample.tsMs, sample.bpm, provider: 'ble_hrm');
+      _pushHr(sample.tsMs, sample.bpm, 'ble_hrm');
       final rr = sample.rrIntervalsMs.where((v) => v > 0).toList(growable: false);
-      if (rr.isNotEmpty) Synheart.pushRrBatch(sample.tsMs, rr, provider: 'ble_hrm');
+      if (rr.isNotEmpty) _pushRr(sample.tsMs, rr, 'ble_hrm');
     }, onError: _readings.addError);
   }
 
@@ -230,10 +280,10 @@ class SynheartSignals implements SignalBackend {
     final hr = (decoded['heart_rate_bpm'] as num?)?.toDouble();
     if (hr != null && hr > 0) {
       _heartRate.add(hr);
-      Synheart.pushWearHr(now, hr, provider: provider);
+      _pushHr(now, hr, provider);
     }
     final rr = (decoded['rr_intervals_ms'] as List<dynamic>? ?? const []).whereType<num>().map((v) => v.toDouble()).where((v) => v > 0).toList();
-    if (rr.isNotEmpty) Synheart.pushRrBatch(now, rr, provider: provider);
+    if (rr.isNotEmpty) _pushRr(now, rr, provider);
     final motion = decoded['motion_samples'] as List<dynamic>? ?? const [];
     for (var i = 0; i < motion.length; i++) {
       final m = motion[i];
@@ -266,7 +316,7 @@ class SynheartSignals implements SignalBackend {
           _heartRate.add(bpm);
           // Heart rate only: Wear OS Health Services' HEART_RATE_BPM has no RR
           // intervals, so HRV-based axes may stay below the confidence gate.
-          Synheart.pushWearHr((e['timestamp'] as num).toInt(), bpm, provider: 'wear_os');
+          _pushHr((e['timestamp'] as num).toInt(), bpm, 'wear_os');
         case 'stream_error':
           _readings.addError(StateError(e['message'] as String? ?? 'The watch could not start heart rate.'));
       }

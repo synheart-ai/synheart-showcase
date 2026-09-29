@@ -90,6 +90,64 @@ void main() {
       });
     });
 
+    group('diagnostics explain "not enough signal"', () {
+      void timeOut(FakeAsync async, void Function() during) {
+        engine.startCheckIn();
+        async.flushMicrotasks();
+        during();
+        async.elapse(SceneStateEngine.checkInTimeout + const Duration(seconds: 1));
+        expect(engine.checkIn, CheckInPhase.notEnoughSignal);
+      }
+
+      test('no heart rate at all', () {
+        fakeAsync((async) {
+          timeOut(async, () {});
+          expect(engine.diagnostics!.heartRateSamples, 0);
+          expect(engine.diagnostics!.diagnosis, startsWith('No heart rate arrived'));
+        });
+      });
+
+      test('heart rate but no Synheart reading', () {
+        fakeAsync((async) {
+          timeOut(async, () {
+            for (var i = 0; i < 5; i++) {
+              fake.heartRateCtl.add(72);
+            }
+          });
+          expect(engine.diagnostics!.heartRateSamples, 5);
+          expect(engine.diagnostics!.readings, 0);
+          expect(engine.diagnostics!.diagnosis, contains('Synheart produced no reading'));
+        });
+      });
+
+      test('readings below the gate report the closest axis', () {
+        fakeAsync((async) {
+          timeOut(async, () {
+            fake.heartRateCtl.add(72);
+            fake.emit(weak); // stress at 0.30
+            fake.emit(const CurrentState(stress: AxisReading(0.5, 0.41), arousal: AxisReading(0.5, 0.2), source: StateSource.synheart));
+          });
+          final d = engine.diagnostics!;
+          expect(d.readings, 2);
+          expect(d.best[HsiAxis.stress], 0.41);
+          expect(d.best[HsiAxis.arousal], 0.2);
+          expect(d.diagnosis, contains('Stress at 0.41'));
+        });
+      });
+
+      test('a new check-in starts fresh counts', () {
+        fakeAsync((async) {
+          timeOut(async, () => fake.heartRateCtl.add(72));
+          engine.resetCheckIn();
+          engine.startCheckIn();
+          async.flushMicrotasks();
+          expect(engine.diagnostics!.heartRateSamples, 0);
+          engine.cancelCheckIn();
+          async.flushMicrotasks();
+        });
+      });
+    });
+
     test('cancelling stops collection', () async {
       await engine.startCheckIn();
       await engine.cancelCheckIn();

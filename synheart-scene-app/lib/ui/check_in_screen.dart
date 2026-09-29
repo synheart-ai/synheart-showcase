@@ -166,6 +166,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 : 'Synheart could not get a confident reading this time. That is not a negative result — '
                     'your picks can still use your taste.'),
           ),
+          if (!failed && engine.diagnostics != null) _Details(engine),
           const SizedBox(height: 16),
           FilledButton(onPressed: () => _engine.startCheckIn(), child: const Text('Try again')),
           TextButton(onPressed: _skip, child: const Text('Use my taste only')),
@@ -217,5 +218,33 @@ class _CheckInScreenState extends State<CheckInScreen> {
           ),
         ),
     ];
+  }
+}
+
+/// What the check-in received, so "Not enough signal" can be explained on
+/// the spot (counts and confidences only).
+class _Details extends StatelessWidget {
+  const _Details(this.engine);
+
+  final SceneStateEngine engine;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = engine.diagnostics!;
+    final t = Theme.of(context).textTheme;
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 8),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        title: Text('Details', style: t.titleSmall),
+        children: [
+          Text(d.diagnosis, style: t.bodyMedium),
+          const SizedBox(height: 8),
+          for (final line in d.summary(DateTime.now())) Text(line, style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+        ],
+      ),
+    );
   }
 }

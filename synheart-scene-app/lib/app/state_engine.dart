@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../domain/state.dart';
+import 'check_in_diagnostics.dart';
 import 'signals.dart';
 
 /// Where the signal comes from.
@@ -91,6 +92,8 @@ class SceneStateEngine extends ChangeNotifier {
   DateTime? _checkInStartedAt;
   CurrentState? _checkInResult;
   Timer? _checkInTimer;
+  Timer? _diagTimer;
+  CheckInDiagnostics? _diag;
 
   bool get consented => _consented;
   bool get busy => _starting;
@@ -105,6 +108,10 @@ class SceneStateEngine extends ChangeNotifier {
   CheckInPhase get checkIn => _checkIn;
   DateTime? get checkInStartedAt => _checkInStartedAt;
   CurrentState? get checkInResult => _checkInResult;
+
+  /// What the last (or current) check-in received — for the Details section
+  /// of "Not enough signal" and the `[scene-signal]` log.
+  CheckInDiagnostics? get diagnostics => _diag;
   bool get checkInRunning => _checkIn == CheckInPhase.connecting || _checkIn == CheckInPhase.reading;
 
   bool get isLive => _lastSampleAt != null && _clock().difference(_lastSampleAt!) < liveWithin;
@@ -225,9 +232,15 @@ class SceneStateEngine extends ChangeNotifier {
     _published = null;
     _checkIn = CheckInPhase.reading;
     _checkInStartedAt = _clock();
+    final diag = _diag = CheckInDiagnostics(chosenName ?? chosen.source.label, _checkInStartedAt!);
+    CheckInDiagnostics.log('check-in started · source ${diag.source} · gate ${AxisReading.minConfidence} · runtime ${backend.diagnostics()}');
+    _diagTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      CheckInDiagnostics.log('${_clock().difference(diag.startedAt).inSeconds}s · ${diag.summary(_clock()).join(' · ')} · runtime ${backend.diagnostics()}');
+    });
     _checkInTimer = Timer(checkInTimeout, () {
       if (_checkIn != CheckInPhase.reading) return;
       _checkIn = CheckInPhase.notEnoughSignal;
+      CheckInDiagnostics.log('check-in ended: NOT ENOUGH SIGNAL · ${diag.diagnosis} · runtime ${backend.diagnostics()}');
       _stopCollecting();
     });
     notifyListeners();
@@ -250,6 +263,8 @@ class SceneStateEngine extends ChangeNotifier {
   Future<void> _stopCollecting() async {
     _checkInTimer?.cancel();
     _checkInTimer = null;
+    _diagTimer?.cancel();
+    _diagTimer = null;
     await backend.disconnectSource();
     _clearSource();
     notifyListeners();
@@ -297,6 +312,7 @@ class SceneStateEngine extends ChangeNotifier {
   void _onHeartRate(double bpm) {
     _heartRate = bpm;
     _lastSampleAt = _clock();
+    if (_checkIn == CheckInPhase.reading) _diag?.onHeartRate(_lastSampleAt!);
     notifyListeners();
   }
 
@@ -311,6 +327,11 @@ class SceneStateEngine extends ChangeNotifier {
     final reading = raw.copyWith(source: _source == WearableSource.wearSim ? StateSource.wearSim : StateSource.synheart, capturedAt: now);
     _latest = reading;
     _lastSampleAt ??= now;
+    if (_checkIn == CheckInPhase.reading) {
+      _diag?.onReading(raw);
+      CheckInDiagnostics.log('reading #${_diag?.readings} · ${CheckInDiagnostics.describeReading(raw)} · '
+          '${reading.hasEvidence ? 'passes the gate' : 'below the gate'}');
+    }
     // Outside a check-in, readings only feed the live view (Settings). In a
     // check-in, the first confident reading is the result.
     if (reading.hasEvidence && _checkIn == CheckInPhase.reading) _publish(reading);
@@ -321,6 +342,7 @@ class SceneStateEngine extends ChangeNotifier {
     _published = reading;
     onPublish(reading);
     if (_checkIn == CheckInPhase.reading) {
+      CheckInDiagnostics.log('check-in done: published ${CheckInDiagnostics.describeReading(reading)}');
       _checkInResult = reading;
       _checkIn = CheckInPhase.done;
       _stopCollecting();
@@ -371,6 +393,7 @@ class SceneStateEngine extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _checkInTimer?.cancel();
+    _diagTimer?.cancel();
     for (final s in _subs) {
       s.cancel();
     }
