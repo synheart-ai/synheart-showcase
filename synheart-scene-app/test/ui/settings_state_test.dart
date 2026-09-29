@@ -23,7 +23,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("See tonight's picks"));
+    await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
   }
 
@@ -53,42 +53,81 @@ void main() {
     expect(fake.calls, isEmpty);
   });
 
-  testWidgets('after consent, sources connect through the Synheart runtime', (tester) async {
+  testWidgets('the full check-in: consent, choose a source, read, then collection stops (plan §4, §10)', (tester) async {
     await toTonight(tester);
-    tester.view.physicalSize = const Size(1170, 7000); // the whole Settings page on screen
-    await openSettings(tester);
-    final agree = find.text('I agree — continue');
-    await tester.tap(agree);
+    tester.view.physicalSize = const Size(1170, 7000); // whole screens, no scrolling
+    await tester.tap(find.text('Do a Synheart check-in'));
+    await tester.pumpAndSettle();
+
+    // Consent first; nothing has started.
+    expect(find.text('Let Scene read your current state'), findsOneWidget);
+    expect(find.textContaining('Only during a check-in'), findsOneWidget);
+    expect(fake.calls, isEmpty);
+    await tester.tap(find.text('I agree — continue'));
     await tester.pumpAndSettle();
     expect(fake.calls, ['start']);
 
+    // Choose and test the strap in Settings; leaving Settings pauses it.
+    expect(find.text('No source chosen yet'), findsOneWidget);
+    await tester.tap(find.text('Choose a source'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Bluetooth heart-rate monitor'));
     await tester.pumpAndSettle();
-    expect(fake.calls, contains('scan'));
     await tester.tap(find.text('Polar H10'));
     await tester.pumpAndSettle();
-    expect(fake.calls, containsAllInOrder(['scan', 'disconnect', 'ble:hrm-1']));
-    expect(find.text('Waiting for a signal…'), findsOneWidget);
-
     fake.heartRateCtl.add(64);
     await tester.pump();
     expect(find.text('Signal arriving · 64 BPM'), findsOneWidget);
-
-    // A confident reading is published: back on Tonight, the pill shows it.
-    fake.emit(const CurrentState(stress: AxisReading(0.8, 0.8), capacity: AxisReading(0.3, 0.7), source: StateSource.synheart));
+    fake.emit(const CurrentState(stress: AxisReading(0.8, 0.8), source: StateSource.synheart));
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(find.text('Unwind'), findsOneWidget);
-    await tester.tap(find.byType(ActionChip).first);
+    expect(fake.calls.last, 'disconnect', reason: 'leaving Settings stops collection');
+    expect(find.text('No state'), findsNothing, reason: 'we are on the check-in, not home');
+
+    // The check-in reconnects the strap and reads.
+    expect(find.text('Polar H10'), findsOneWidget);
+    await tester.tap(find.text('Start check-in'));
+    // Not pumpAndSettle: the reading screen animates, and settling would run
+    // fake time past the 3-minute check-in timeout.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Sit back for a minute'), findsOneWidget);
+    fake.heartRateCtl.add(66);
+    await tester.pump();
+    expect(find.text('66 BPM'), findsOneWidget);
+
+    fake.emit(const CurrentState(stress: AxisReading(0.8, 0.8), capacity: AxisReading(0.3, 0.7), source: StateSource.synheart));
     await tester.pumpAndSettle();
-    expect(find.text('Your rhythm has picked up'), findsOneWidget);
-    expect(find.textContaining('From your wearable, via Synheart'), findsOneWidget);
-    // The plan's card: stress + capacity give mental load; energy (arousal) and
-    // engagement (focus) were not in the reading.
+
+    // The plan's Current State card; collection has stopped.
+    expect(find.text('Your current state'), findsOneWidget);
+    expect(find.text('This may be a good evening to unwind.'), findsOneWidget);
     expect(find.text('Mental load'), findsOneWidget);
     expect(find.text('High'), findsOneWidget);
-    expect(find.text('Not available'), findsNWidgets(2));
+    expect(find.text('Not available'), findsNWidgets(2)); // energy and engagement were not in the reading
+    expect(find.text('Unwind'), findsOneWidget);
     expect(find.text('Help me unwind (suggested)'), findsOneWidget);
+    expect(fake.calls.last, 'disconnect');
+
+    await tester.tap(find.text("See tonight's picks"));
+    await tester.pumpAndSettle();
+    expect(find.text('Unwind'), findsOneWidget); // the pill
+  });
+
+  testWidgets('demo data on the check-in shows the plan\'s example card (§4)', (tester) async {
+    await toTonight(tester);
+    tester.view.physicalSize = const Size(1170, 7000);
+    await tester.tap(find.text('Do a Synheart check-in'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Demo data: Busy day'));
+    await tester.pumpAndSettle();
+    expect(find.text('DEMO DATA — NOT A REAL READING'), findsOneWidget);
+    for (final (label, level) in [('Energy', 'Moderate'), ('Mental load', 'High'), ('Engagement', 'Moderate')]) {
+      final row = find.ancestor(of: find.text(label), matching: find.byType(Row)).first;
+      expect(find.descendant(of: row, matching: find.text(level)), findsOneWidget, reason: label);
+    }
+    expect(find.text('Unwind'), findsOneWidget);
+    expect(fake.calls, isEmpty, reason: 'demo data collects nothing');
   });
 
   testWidgets('the Galaxy Watch source connects and shows the watch name', (tester) async {
@@ -117,7 +156,7 @@ void main() {
     await toTonight(tester);
     await useDemo(tester, 'Signal too weak');
     expect(find.textContaining('not enough signal yet'), findsOneWidget);
-    expect(find.text('Connect a source'), findsOneWidget);
+    expect(find.text('Do a Synheart check-in'), findsOneWidget);
   });
 
   testWidgets('demo data and consent are logged, with no signal values', (tester) async {

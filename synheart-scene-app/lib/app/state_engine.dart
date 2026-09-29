@@ -38,15 +38,20 @@ enum DisplayState {
   need,
 }
 
+/// Where a Synheart check-in is.
+enum CheckInPhase { idle, connecting, reading, done, notEnoughSignal, failed }
+
 /// Turns the runtime's HSI stream into the few calm updates Scene needs.
 ///
-/// Resona swaps a track on a mode change; Scene re-ranks films. A ranking
-/// that reshuffles every second is useless, so a reading is *published*
-/// (handed to [onPublish], which updates the cubit) only when:
-/// * it is the first reading with evidence,
-/// * the suggested experience changes and two consecutive windows agree, or
-/// * five minutes have passed since the last publish.
-/// Liveness is tracked separately and does not re-rank anything.
+/// **Collection happens only during a check-in** (plan §4, §10; RFC §5 puts
+/// passive background collection out of scope). Settings chooses and tests a
+/// source and pauses it on leaving; [startCheckIn] reconnects that source and
+/// runs until the first confident reading is *published* (handed to
+/// [onPublish], which updates the cubit) or [checkInTimeout] passes, then
+/// stops collecting. Readings outside a check-in update the live view only.
+///
+/// Within a check-in, the first reading with evidence is published; a
+/// WearSim presentation cue publishes its seeded reading.
 class SceneStateEngine extends ChangeNotifier {
   SceneStateEngine(this.backend, {required this.onPublish, DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
     _subs = [
@@ -61,8 +66,9 @@ class SceneStateEngine extends ChangeNotifier {
   final DateTime Function() _clock;
   late final List<StreamSubscription<Object?>> _subs;
 
-  static const confirmWindows = 2;
-  static const republishEvery = Duration(minutes: 5);
+  /// HSI windows are about 60 s and arrive with a lag, so a first confident
+  /// reading usually takes 1–2 minutes.
+  static const checkInTimeout = Duration(minutes: 3);
 
   /// A source counts as live while samples arrived this recently (Resona: 45 s).
   static const liveWithin = Duration(seconds: 45);
@@ -76,11 +82,15 @@ class SceneStateEngine extends ChangeNotifier {
   DateTime? _lastSampleAt;
   CurrentState? _latest;
   CurrentState? _published;
-  DateTime? _publishedAt;
-  Experience? _candidate;
-  int _candidateWindows = 0;
   bool _presenting = false;
   bool _settling = false;
+
+  /// The source chosen in Settings, reconnected for each check-in.
+  ({WearableSource source, String? name, Future<void> Function() connect})? _chosen;
+  CheckInPhase _checkIn = CheckInPhase.idle;
+  DateTime? _checkInStartedAt;
+  CurrentState? _checkInResult;
+  Timer? _checkInTimer;
 
   bool get consented => _consented;
   bool get busy => _starting;
@@ -89,6 +99,13 @@ class SceneStateEngine extends ChangeNotifier {
   String? get error => _error;
   double? get heartRate => _heartRate;
   CurrentState? get latest => _latest;
+
+  WearableSource? get chosenSource => _chosen?.source;
+  String? get chosenName => _chosen?.name ?? _chosen?.source.label;
+  CheckInPhase get checkIn => _checkIn;
+  DateTime? get checkInStartedAt => _checkInStartedAt;
+  CurrentState? get checkInResult => _checkInResult;
+  bool get checkInRunning => _checkIn == CheckInPhase.connecting || _checkIn == CheckInPhase.reading;
 
   bool get isLive => _lastSampleAt != null && _clock().difference(_lastSampleAt!) < liveWithin;
 
@@ -144,6 +161,7 @@ class SceneStateEngine extends ChangeNotifier {
     String? name;
     await _connect(WearableSource.watch, () async => name = await backend.connectWatch());
     _sourceName = name;
+    _chosen = (source: WearableSource.watch, name: name, connect: () async => _sourceName = await backend.connectWatch());
     notifyListeners();
   }
 
@@ -170,7 +188,68 @@ class SceneStateEngine extends ChangeNotifier {
     return endpoint;
   }
 
+  /// Disconnect and forget the chosen source.
   Future<void> disconnectSource() async {
+    await backend.disconnectSource();
+    _clearSource();
+    _chosen = null;
+    notifyListeners();
+  }
+
+  /// Stop collecting but keep the source chosen, e.g. on leaving Settings.
+  /// Does nothing while a check-in runs.
+  Future<void> pauseSource() async {
+    if (checkInRunning || _source == WearableSource.none) return;
+    await backend.disconnectSource();
+    _clearSource();
+    notifyListeners();
+  }
+
+  /// Start a check-in with the chosen source.
+  Future<void> startCheckIn() async {
+    final chosen = _chosen;
+    if (!_consented) throw StateError('Consent is required before a check-in.');
+    if (chosen == null) throw StateError('Choose a source first.');
+    _checkInTimer?.cancel();
+    _checkIn = CheckInPhase.connecting;
+    _checkInResult = null;
+    notifyListeners();
+    try {
+      if (_source != chosen.source) await _connect(chosen.source, chosen.connect, name: chosen.name);
+    } catch (_) {
+      _checkIn = CheckInPhase.failed;
+      notifyListeners();
+      return;
+    }
+    // A check-in needs a reading taken after it started.
+    _published = null;
+    _checkIn = CheckInPhase.reading;
+    _checkInStartedAt = _clock();
+    _checkInTimer = Timer(checkInTimeout, () {
+      if (_checkIn != CheckInPhase.reading) return;
+      _checkIn = CheckInPhase.notEnoughSignal;
+      _stopCollecting();
+    });
+    notifyListeners();
+  }
+
+  /// Leave the check-in early; collection stops.
+  Future<void> cancelCheckIn() async {
+    if (!checkInRunning) return;
+    _checkIn = CheckInPhase.idle;
+    await _stopCollecting();
+  }
+
+  /// Back to idle after a result has been shown.
+  void resetCheckIn() {
+    if (checkInRunning || _checkIn == CheckInPhase.idle) return;
+    _checkIn = CheckInPhase.idle;
+    notifyListeners();
+  }
+
+  Future<void> _stopCollecting() async {
+    _checkInTimer?.cancel();
+    _checkInTimer = null;
     await backend.disconnectSource();
     _clearSource();
     notifyListeners();
@@ -185,6 +264,7 @@ class SceneStateEngine extends ChangeNotifier {
       _source = source;
       _sourceName = name ?? source.label;
     });
+    if (source != WearableSource.watch) _chosen = (source: source, name: name, connect: connect);
   }
 
   Future<void> _guard(Future<void> Function() body) async {
@@ -210,8 +290,6 @@ class SceneStateEngine extends ChangeNotifier {
     _heartRate = null;
     _lastSampleAt = null;
     _latest = null;
-    _candidate = null;
-    _candidateWindows = 0;
     _presenting = false;
     _settling = false;
   }
@@ -233,32 +311,20 @@ class SceneStateEngine extends ChangeNotifier {
     final reading = raw.copyWith(source: _source == WearableSource.wearSim ? StateSource.wearSim : StateSource.synheart, capturedAt: now);
     _latest = reading;
     _lastSampleAt ??= now;
-    if (!reading.hasEvidence) {
-      _candidate = null;
-      _candidateWindows = 0;
-      notifyListeners();
-      return;
-    }
-
-    final next = reading.suggestedExperience;
-    if (next == _candidate) {
-      _candidateWindows++;
-    } else {
-      _candidate = next;
-      _candidateWindows = 1;
-    }
-
-    final first = _published == null;
-    final changed = _published?.suggestedExperience != next && _candidateWindows >= confirmWindows;
-    final due = _publishedAt != null && now.difference(_publishedAt!) >= republishEvery;
-    if (first || changed || due) _publish(reading, now);
+    // Outside a check-in, readings only feed the live view (Settings). In a
+    // check-in, the first confident reading is the result.
+    if (reading.hasEvidence && _checkIn == CheckInPhase.reading) _publish(reading);
     notifyListeners();
   }
 
-  void _publish(CurrentState reading, DateTime now) {
+  void _publish(CurrentState reading) {
     _published = reading;
-    _publishedAt = now;
     onPublish(reading);
+    if (_checkIn == CheckInPhase.reading) {
+      _checkInResult = reading;
+      _checkIn = CheckInPhase.done;
+      _stopCollecting();
+    }
   }
 
   /// WearSim presentation cues use Resona's names; Scene maps them to its
@@ -277,7 +343,8 @@ class SceneStateEngine extends ChangeNotifier {
         _settling = false;
         final reading = cueReading(cue).copyWith(capturedAt: now);
         _latest = reading;
-        _publish(reading, now);
+        // Like any reading, a cue changes the picks only during a check-in.
+        if (_checkIn == CheckInPhase.reading) _publish(reading);
       default:
         return;
     }
@@ -291,8 +358,19 @@ class SceneStateEngine extends ChangeNotifier {
         _ => const CurrentState(focus: AxisReading(0.78, 0.8), stress: AxisReading(0.2, 0.75), source: StateSource.wearSim),
       };
 
+  bool _disposed = false;
+
+  /// Async work (a pause started from a screen's dispose, a disconnect after a
+  /// check-in) can finish after the app is torn down; never notify then.
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _disposed = true;
+    _checkInTimer?.cancel();
     for (final s in _subs) {
       s.cancel();
     }

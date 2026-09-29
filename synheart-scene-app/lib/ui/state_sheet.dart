@@ -6,6 +6,7 @@ import '../app/scene_cubit.dart';
 import '../app/state_engine.dart';
 import '../domain/state.dart';
 import '../engine/explain.dart';
+import 'check_in_parts.dart';
 import 'routes.dart';
 import 'state_card.dart';
 import 'theme.dart';
@@ -126,7 +127,6 @@ class _StateSheet extends StatelessWidget {
     final view = StateView.of(context);
     final cubit = context.read<SceneCubit>();
     final engine = context.watch<SceneStateEngine>();
-    final viewing = context.select((SceneCubit c) => c.state.viewing);
     final reading = view.reading;
     final suggested = view.stale ? null : reading?.suggestedExperience?.suggestedIntent;
 
@@ -169,30 +169,21 @@ class _StateSheet extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 18),
-            Text('What kind of evening?', style: t.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              suggested == null
-                  ? 'Choose one, or leave it to your taste.'
-                  : 'Suggested: ${suggested.label}. Your choice always wins over the suggestion — or skip it.',
-              style: t.bodyMedium?.copyWith(color: SceneColors.sage),
-            ),
-            const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final intent in EveningIntent.values)
-                ChoiceChip(
-                  label: Text(intent == suggested ? '${intent.label} (suggested)' : intent.label),
-                  selected: viewing.intent == intent,
-                  onSelected: (on) => cubit.setIntent(on ? intent : null),
-                ),
-              ChoiceChip(label: const Text('No preference'), selected: viewing.intent == null, onSelected: (_) => cubit.setIntent(null)),
-            ]),
+            IntentChoice(suggested: suggested),
             const SizedBox(height: 18),
             Text(
               'Computed on this device by Synheart. These are contextual signals, not a diagnosis.',
               style: t.bodyMedium?.copyWith(color: SceneColors.sage),
             ),
             const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.push(Routes.checkIn);
+              },
+              child: Text(view.reading == null || view.stale ? 'Do a Synheart check-in' : 'Check in again'),
+            ),
+            const SizedBox(height: 6),
             FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text("See tonight's picks")),
           ],
         ),

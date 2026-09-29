@@ -20,7 +20,7 @@ void main() {
   Future<void> toTonight(WidgetTester tester) async {
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("See tonight's picks"));
+    await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
     await useDemo(tester, 'Busy day');
   }
@@ -52,7 +52,7 @@ void main() {
     await expectGuidelines(tester);
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("See tonight's picks"));
+    await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
     await expectGuidelines(tester);
     await tester.tap(find.byType(ActionChip).first);

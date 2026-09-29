@@ -9,6 +9,7 @@ import '../app/state_engine.dart';
 import '../data/catalogue.dart';
 import '../data/demo_scenarios.dart';
 import '../data/tmdb.dart';
+import 'check_in_parts.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -30,19 +31,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<WearableDevice>? _devices;
   bool _scanning = false;
 
+  late final SceneStateEngine _engine;
+
   @override
   void initState() {
     super.initState();
+    _engine = context.read<SceneStateEngine>();
     if (widget.pendingLink != null) _link.text = '${widget.pendingLink}';
   }
 
   @override
   void dispose() {
+    // Settings only chooses and tests a source: collection stops on leaving,
+    // and happens again only during a check-in.
+    _engine.pauseSource();
     _link.dispose();
     super.dispose();
   }
 
-  SceneStateEngine get _engine => context.read<SceneStateEngine>();
   DemoLog get _log => context.read<SceneCubit>().log;
 
   Future<void> _run(Future<void> Function() action) async {
@@ -99,64 +105,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  List<Widget> _consentCard(BuildContext context, SceneStateEngine engine) {
-    final t = Theme.of(context).textTheme;
-    return [
-      const Eyebrow('Before you connect'),
-      const SizedBox(height: 6),
-      Text('Let Scene read your current state', style: t.headlineSmall),
-      const SizedBox(height: 12),
-      Text(
-        'Scene can use a wearable to suggest films that may fit this evening. Nothing is collected until you agree.',
-        style: t.bodyLarge,
-      ),
-      const SizedBox(height: 16),
-      const _Point(
-        icon: Icons.favorite_border,
-        title: 'What is read',
-        text: 'Heart rate and heart-rate variability from the one source you choose.',
-      ),
-      const _Point(
-        icon: Icons.phone_iphone,
-        title: 'Where',
-        text: 'Synheart computes focus, stress, arousal and capacity on this device. Cloud upload is off.',
-      ),
-      const _Point(
-        icon: Icons.visibility_outlined,
-        title: 'What you see',
-        text: 'Words, not medical scores. Readings Synheart is not confident about are treated as unavailable.',
-      ),
-      const _Point(
-        icon: Icons.history,
-        title: 'What is kept',
-        text: 'Only the latest reading and its time, until you reset the demo. Disconnect at any time.',
-      ),
-      if (engine.error != null) ...[
-        const SizedBox(height: 8),
-        Callout(title: 'Synheart could not start', child: Text(engine.error!)),
-      ],
-      const SizedBox(height: 12),
-      FilledButton(
-        onPressed: engine.busy ? null : _consent,
-        child: Text(engine.busy ? 'Starting Synheart…' : 'I agree — continue'),
-      ),
-      TextButton(
-        onPressed: () {
-          _log.record(DemoEvent.checkInSkipped);
-          Navigator.of(context).maybePop();
-        },
-        child: const Text('Not now — use my taste only'),
-      ),
-    ];
-  }
+  List<Widget> _consentCard(BuildContext context, SceneStateEngine engine) => [
+        ConsentCard(
+          busy: engine.busy,
+          error: engine.error,
+          onAgree: _consent,
+          onSkip: () {
+            _log.record(DemoEvent.checkInSkipped);
+            Navigator.of(context).maybePop();
+          },
+        ),
+      ];
 
   List<Widget> _sources(BuildContext context, SceneStateEngine engine) {
     final t = Theme.of(context).textTheme;
     final connected = engine.source != WearableSource.none;
     return [
-      const Eyebrow('Signal source'),
+      const Eyebrow('Source for check-ins'),
       const SizedBox(height: 6),
-      Text(connected ? engine.sourceName! : 'Choose a source', style: t.headlineSmall),
+      Text(engine.chosenName ?? 'Choose a source', style: t.headlineSmall),
+      const SizedBox(height: 4),
+      Text(
+        'Scene reads it only during a check-in. Connecting here tests it; it stops when you leave Settings.',
+        style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+      ),
       if (connected) ...[
         const SizedBox(height: 4),
         Text(
@@ -256,34 +228,6 @@ class _SourceTile extends StatelessWidget {
           onTap: onTap,
         ),
       );
-}
-
-class _Point extends StatelessWidget {
-  const _Point({required this.icon, required this.title, required this.text});
-  final IconData icon;
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: SceneColors.sage),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: t.titleMedium),
-              Text(text, style: t.bodyMedium),
-            ]),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Where posters and synopses come from, with TMDB's required attribution.

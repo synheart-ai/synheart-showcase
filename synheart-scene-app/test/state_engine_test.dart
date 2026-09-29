@@ -1,11 +1,12 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scene/app/signals.dart';
 import 'package:scene/app/state_engine.dart';
 import 'package:scene/domain/state.dart';
 
 import 'support/fake_signals.dart';
 
 const unwind = CurrentState(stress: AxisReading(0.8, 0.8), source: StateSource.synheart);
-const engaged = CurrentState(focus: AxisReading(0.8, 0.8), source: StateSource.synheart);
 const weak = CurrentState(stress: AxisReading(0.9, 0.3), source: StateSource.synheart);
 
 void main() {
@@ -24,71 +25,106 @@ void main() {
   test('nothing connects before consent', () async {
     expect(engine.display, DisplayState.off);
     expect(() => engine.connectPlatformHealth(), throwsStateError);
+    await expectLater(engine.startCheckIn(), throwsStateError);
     expect(fake.calls, isEmpty);
   });
 
-  test('consent starts the runtime; a source starts listening', () async {
-    await engine.consent();
-    await engine.connectPlatformHealth();
-    expect(fake.calls, ['start', 'disconnect', 'health']);
-    expect(engine.source, WearableSource.platformHealth);
-    expect(engine.display, DisplayState.listening);
+  group('outside a check-in', () {
+    test('a connected source only feeds the live view — readings never publish', () async {
+      await engine.consent();
+      await engine.connectPlatformHealth();
+      expect(engine.display, DisplayState.listening);
+      fake.emit(unwind);
+      expect(published, isEmpty);
+      expect(engine.latest, isNotNull);
+    });
+
+    test('leaving Settings pauses collection but remembers the source', () async {
+      await engine.consent();
+      await engine.connectBluetooth(const WearableDevice('hrm-1', 'Polar H10'));
+      await engine.pauseSource();
+      expect(engine.source, WearableSource.none);
+      expect(fake.calls.last, 'disconnect');
+      expect(engine.chosenName, 'Polar H10');
+    });
   });
 
-  group('publishing', () {
+  group('check-in', () {
     setUp(() async {
       await engine.consent();
       await engine.connectPlatformHealth();
+      await engine.pauseSource();
+      fake.calls.clear();
     });
 
-    test('the first reading with evidence is published, stamped and sourced', () {
-      fake.emit(unwind);
-      expect(published, hasLength(1));
-      expect(published.single.capturedAt, now);
-      expect(published.single.source, StateSource.synheart);
-      expect(engine.display, DisplayState.need);
-      expect(engine.experience, Experience.unwind);
-    });
+    test('reconnects the chosen source, publishes the first confident reading, then stops collecting', () async {
+      await engine.startCheckIn();
+      expect(fake.calls, ['disconnect', 'health']);
+      expect(engine.checkIn, CheckInPhase.reading);
 
-    test('a change of need is published only when two windows agree', () {
-      fake.emit(unwind);
-      fake.emit(engaged); // one window: not yet
-      expect(published, hasLength(1));
-      fake.emit(engaged); // second window: confirmed
-      expect(published, hasLength(2));
-      expect(published.last.suggestedExperience, Experience.stayEngaged);
-    });
-
-    test('a single flicker does not re-rank', () {
-      fake.emit(unwind);
-      fake.emit(engaged);
-      fake.emit(unwind);
-      fake.emit(engaged);
-      expect(published, hasLength(1));
-    });
-
-    test('the same need is re-published every five minutes to keep it fresh', () {
-      fake.emit(unwind);
-      now = now.add(const Duration(minutes: 4));
-      fake.emit(unwind);
-      expect(published, hasLength(1));
-      now = now.add(const Duration(minutes: 2));
-      fake.emit(unwind);
-      expect(published, hasLength(2));
-    });
-
-    test('low confidence is "not enough evidence", never a negative result', () {
-      fake.emit(weak);
+      fake.emit(weak); // not confident: keep reading
       expect(published, isEmpty);
       expect(engine.display, DisplayState.notEnoughEvidence);
+
+      fake.emit(unwind);
+      expect(published.single.suggestedExperience, Experience.unwind);
+      expect(published.single.capturedAt, now);
+      expect(engine.checkIn, CheckInPhase.done);
+      await pumpEventQueue();
+      expect(fake.calls.last, 'disconnect');
+      expect(engine.source, WearableSource.none);
+
+      fake.emit(unwind); // after the check-in: ignored
+      expect(published, hasLength(1));
     });
 
-    test('liveness follows the heart-rate samples', () {
+    test('with no confident reading it ends as "not enough signal" after the timeout', () {
+      fakeAsync((async) {
+        engine.startCheckIn();
+        async.flushMicrotasks();
+        fake.emit(weak);
+        async.elapse(SceneStateEngine.checkInTimeout + const Duration(seconds: 1));
+        expect(engine.checkIn, CheckInPhase.notEnoughSignal);
+        expect(published, isEmpty);
+        expect(fake.calls.last, 'disconnect');
+      });
+    });
+
+    test('cancelling stops collection', () async {
+      await engine.startCheckIn();
+      await engine.cancelCheckIn();
+      expect(engine.checkIn, CheckInPhase.idle);
+      expect(fake.calls.last, 'disconnect');
+    });
+
+    test('liveness follows the heart-rate samples', () async {
+      await engine.startCheckIn();
       fake.heartRateCtl.add(62);
       expect(engine.isLive, isTrue);
       expect(engine.heartRate, 62);
       now = now.add(const Duration(seconds: 46));
       expect(engine.isLive, isFalse);
+    });
+  });
+
+  group('Galaxy Watch', () {
+    test('connecting names the watch; a check-in reconnects it', () async {
+      await engine.consent();
+      await engine.connectWatch();
+      expect(engine.source, WearableSource.watch);
+      expect(engine.chosenName, 'Galaxy Watch6');
+      await engine.pauseSource();
+      await engine.startCheckIn();
+      expect(fake.calls.where((c) => c == 'watch'), hasLength(2));
+      expect(engine.sourceName, 'Galaxy Watch6');
+    });
+
+    test('no connected watch is reported, not silently ignored', () async {
+      fake.watchName = null;
+      await engine.consent();
+      await expectLater(engine.connectWatch(), throwsStateError);
+      expect(engine.source, WearableSource.none);
+      expect(engine.error, contains('No watch is connected'));
     });
   });
 
@@ -104,46 +140,19 @@ void main() {
           throwsFormatException);
     });
 
-    test('presentation cues drive the story and pause live readings', () async {
+    test('a presentation cue completes a check-in with its seeded reading', () async {
       await engine.consent();
       await engine.pairWearSim(Uri.parse('wearsim://pair?endpoint=ws://127.0.0.1:9/s'));
       expect(fake.calls.last, 'wearsim:ws://127.0.0.1:9/s');
 
+      fake.cuesCtl.add('ease'); // outside a check-in: no effect on picks
+      expect(published, isEmpty);
+
+      await engine.startCheckIn();
       fake.cuesCtl.add('ease');
-      expect(published.last.suggestedExperience, Experience.unwind);
-      expect(published.last.source, StateSource.wearSim);
-
-      fake.emit(engaged); // ignored while presenting
-      fake.emit(engaged);
-      expect(published, hasLength(1));
-
-      fake.cuesCtl.add('signal_settling');
-      expect(engine.display, DisplayState.settling);
-
-      fake.cuesCtl.add('off');
-      fake.emit(engaged);
-      fake.emit(engaged);
-      expect(published.last.suggestedExperience, Experience.stayEngaged);
-    });
-  });
-
-  group('Galaxy Watch', () {
-    test('connecting names the watch and streams like any other source', () async {
-      await engine.consent();
-      await engine.connectWatch();
-      expect(fake.calls, ['start', 'disconnect', 'watch']);
-      expect(engine.source, WearableSource.watch);
-      expect(engine.sourceName, 'Galaxy Watch6');
-      fake.heartRateCtl.add(71);
-      expect(engine.isLive, isTrue);
-    });
-
-    test('no connected watch is reported, not silently ignored', () async {
-      fake.watchName = null;
-      await engine.consent();
-      await expectLater(engine.connectWatch(), throwsStateError);
-      expect(engine.source, WearableSource.none);
-      expect(engine.error, contains('No watch is connected'));
+      expect(published.single.suggestedExperience, Experience.unwind);
+      expect(published.single.source, StateSource.wearSim);
+      expect(engine.checkIn, CheckInPhase.done);
     });
   });
 

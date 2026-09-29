@@ -28,7 +28,7 @@ class CompareScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('What changed?')),
         body: PageBody(
-          bottom: FilledButton(onPressed: () => context.push(Routes.settings), child: const Text('Connect a source')),
+          bottom: FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Do a Synheart check-in')),
           children: [
             Callout(
               child: Text(picks.isStale

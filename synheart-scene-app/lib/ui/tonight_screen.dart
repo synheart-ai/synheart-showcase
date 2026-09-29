@@ -68,7 +68,7 @@ class TonightScreen extends StatelessWidget {
         ),
         body: PageBody(
           bottom: !picks.hasUsableState
-              ? FilledButton(onPressed: () => context.push(Routes.settings), child: const Text('Connect a source'))
+              ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Do a Synheart check-in'))
               : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
           children: [
             SegmentedButton<RecommendationMode>(

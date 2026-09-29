@@ -14,7 +14,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("See tonight's picks"));
+    await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
     await useDemo(tester, scenario);
   }
@@ -85,7 +85,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Taste only. Your last reading, from 3 h ago, is too old to use'), findsOneWidget);
     expect(find.text("Your preferences haven't changed."), findsNothing);
-    expect(find.text('Connect a source'), findsOneWidget);
+    expect(find.text('Do a Synheart check-in'), findsOneWidget);
   });
 
   testWidgets('an explicit intent works in taste-only mode too, and is named in the reason (RFC §9.6)', (tester) async {

@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("See tonight's picks"));
+    await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
     await tester.tap(find.text('#1 TONIGHT'));
     await tester.pumpAndSettle();

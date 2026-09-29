@@ -28,7 +28,7 @@ void main() {
 
     expect(find.text('Your Movie DNA'), findsOneWidget);
     expect(find.textContaining('%'), findsWidgets); // plan §3: "Thriller 92%"
-    expect(find.text("See tonight's picks"), findsOneWidget);
+    expect(find.text('Start my Synheart check-in'), findsOneWidget);
   });
 
   test('DNA traits for the demo persona read like the plan', () {
