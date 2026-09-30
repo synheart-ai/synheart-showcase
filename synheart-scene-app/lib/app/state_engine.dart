@@ -44,15 +44,18 @@ enum CheckInPhase { idle, connecting, reading, done, notEnoughSignal, failed }
 
 /// Turns the runtime's HSI stream into the few calm updates Scene needs.
 ///
-/// **Collection happens only during a check-in** (plan §4, §10; RFC §5 puts
-/// passive background collection out of scope). Settings chooses and tests a
-/// source and pauses it on leaving; [startCheckIn] reconnects that source and
-/// runs until the first confident reading is *published* (handed to
-/// [onPublish], which updates the cubit) or [checkInTimeout] passes, then
-/// stops collecting. Readings outside a check-in update the live view only.
+/// **Collection is continuous (product decision, 2026-09-30).** After
+/// consent, heart rate from the chosen source and behavior signals are
+/// collected in the foreground and the background (an Android foreground
+/// service keeps Scene running, with an ongoing notification). Every reading
+/// with evidence is *published* (handed to [onPublish], which updates the
+/// cubit), so the picks follow the state live. This reverses the earlier
+/// check-in-only rule and RFC §5's "no passive background collection"; it
+/// needs a privacy review before any external use.
 ///
-/// Within a check-in, the first reading with evidence is published; a
-/// WearSim presentation cue publishes its seeded reading.
+/// A check-in is optional: [startCheckIn] waits for the next reading with
+/// evidence, or [checkInTimeout]. It no longer stops collection. A WearSim
+/// presentation cue publishes its seeded reading.
 class SceneStateEngine extends ChangeNotifier {
   SceneStateEngine(this.backend, {required this.onPublish, DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
     _subs = [
@@ -135,11 +138,23 @@ class SceneStateEngine extends ChangeNotifier {
       await backend.start();
       _consented = true;
     });
+    // Keep collecting in the background. A refused permission or a blocked
+    // service start leaves foreground collection working, and says why.
+    try {
+      await backend.requestBehaviorPermissions();
+      await backend.setBackground(true);
+    } catch (e) {
+      _error = 'Background collection is not running: ${_describe(e)}';
+      notifyListeners();
+    }
   }
 
   /// Withdraw consent: disconnect and stop the runtime. The last published
   /// reading stays in the cubit until it goes stale or the demo is reset.
   Future<void> withdraw() async {
+    try {
+      await backend.setBackground(false);
+    } catch (_) {}
     await backend.stop();
     _consented = false;
     _clearSource();
@@ -203,15 +218,6 @@ class SceneStateEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Stop collecting but keep the source chosen, e.g. on leaving Settings.
-  /// Does nothing while a check-in runs.
-  Future<void> pauseSource() async {
-    if (checkInRunning || _source == WearableSource.none) return;
-    await backend.disconnectSource();
-    _clearSource();
-    notifyListeners();
-  }
-
   /// Start a check-in with the chosen source.
   Future<void> startCheckIn() async {
     final chosen = _chosen;
@@ -241,16 +247,16 @@ class SceneStateEngine extends ChangeNotifier {
       if (_checkIn != CheckInPhase.reading) return;
       _checkIn = CheckInPhase.notEnoughSignal;
       CheckInDiagnostics.log('check-in ended: NOT ENOUGH SIGNAL · ${diag.diagnosis} · runtime ${backend.diagnostics()}');
-      _stopCollecting();
+      _endCheckIn();
     });
     notifyListeners();
   }
 
-  /// Leave the check-in early; collection stops.
+  /// Leave the check-in early. Collection continues.
   Future<void> cancelCheckIn() async {
     if (!checkInRunning) return;
     _checkIn = CheckInPhase.idle;
-    await _stopCollecting();
+    _endCheckIn();
   }
 
   /// Back to idle after a result has been shown.
@@ -260,13 +266,12 @@ class SceneStateEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _stopCollecting() async {
+  /// A check-in ended (result, timeout or cancel). Collection continues.
+  void _endCheckIn() {
     _checkInTimer?.cancel();
     _checkInTimer = null;
     _diagTimer?.cancel();
     _diagTimer = null;
-    await backend.disconnectSource();
-    _clearSource();
     notifyListeners();
   }
 
@@ -332,9 +337,9 @@ class SceneStateEngine extends ChangeNotifier {
       CheckInDiagnostics.log('reading #${_diag?.readings} · ${CheckInDiagnostics.describeReading(raw)} · '
           '${reading.hasEvidence ? 'passes the gate' : 'below the gate'}');
     }
-    // Outside a check-in, readings only feed the live view (Settings). In a
-    // check-in, the first confident reading is the result.
-    if (reading.hasEvidence && _checkIn == CheckInPhase.reading) _publish(reading);
+    // Live: every reading with evidence updates the state; during a check-in
+    // it is also that check-in's result.
+    if (reading.hasEvidence) _publish(reading);
     notifyListeners();
   }
 
@@ -345,7 +350,7 @@ class SceneStateEngine extends ChangeNotifier {
       CheckInDiagnostics.log('check-in done: published ${CheckInDiagnostics.describeReading(reading)}');
       _checkInResult = reading;
       _checkIn = CheckInPhase.done;
-      _stopCollecting();
+      _endCheckIn();
     }
   }
 
@@ -365,8 +370,8 @@ class SceneStateEngine extends ChangeNotifier {
         _settling = false;
         final reading = cueReading(cue).copyWith(capturedAt: now);
         _latest = reading;
-        // Like any reading, a cue changes the picks only during a check-in.
-        if (_checkIn == CheckInPhase.reading) _publish(reading);
+        // Like any reading, a cue updates the state live.
+        _publish(reading);
       default:
         return;
     }

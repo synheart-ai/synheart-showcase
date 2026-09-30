@@ -58,5 +58,23 @@ class FakeSignals implements SignalBackend {
   @override
   Map<String, Object?> diagnostics() => const {'backend': 'fake'};
 
+  bool background = false;
+  bool notificationAccess = false;
+
+  @override
+  Future<void> setBackground(bool on) async {
+    calls.add(on ? 'background:on' : 'background:off');
+    background = on;
+  }
+
+  @override
+  Future<void> requestBehaviorPermissions() async => calls.add('permissions');
+
+  @override
+  Future<bool> notificationAccessGranted() async => notificationAccess;
+
+  @override
+  Future<void> openNotificationAccess() async => calls.add('notificationAccess');
+
   void emit(CurrentState s) => readingsCtl.add(s);
 }

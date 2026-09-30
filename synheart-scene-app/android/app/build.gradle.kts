@@ -48,4 +48,6 @@ flutter {
 dependencies {
     // Wearable Data Layer: receives heart rate from the Scene Galaxy Watch app.
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
+    // NotificationCompat / ServiceCompat for the background-state foreground service.
+    implementation("androidx.core:core-ktx:1.13.1")
 }

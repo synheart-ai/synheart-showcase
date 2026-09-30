@@ -49,11 +49,11 @@ The full mapping is in [`docs/state-mapping.md`](docs/state-mapping.md).
 | Welcome | Find the right movie for right now |
 | Build movie profile | Rate a curated set (Love / Like / Not for me / Haven't seen), pick genres, Familiar ↔ Surprise me; every step can be skipped |
 | Movie DNA | The baseline (genre percentages and qualities); edit it or reset the demo |
-| **Synheart check-in** | Consent, then "Sit back for a minute" while Synheart reads the chosen wearable; ends at the first confident reading. **The only time Scene collects** |
+| **Synheart check-in** | Consent, then "Sit back for a minute" until the next Synheart reading. Optional: after consent Scene collects continuously and the state updates live |
 | Current State | The plan's card: Energy, Mental load, Engagement, Suggested experience; the suggested evening to accept, change or skip |
 | **Home (Tonight)** | The Taste only ⇄ Taste + current state toggle, a hero for the #1 pick, tonight's top five, Choose My Evening, then browse rows |
-| State pill and sheet | The latest check-in in plain words, its age, and Check in again |
-| Settings (⚙ on Welcome, Movie DNA, Tonight, the check-in and Current State) | Consent; choose and test a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim) — paused on leaving; demo data |
+| State pill and sheet | The latest reading in plain words, its age, and Check in again |
+| Settings (⚙ on Welcome, Movie DNA, Tonight, the check-in and Current State) | Consent; choose a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim), which stays connected; behavior signals and Notification access; demo data |
 | Why this movie? | *Your taste* / *Right now* / *How that affected this pick*, from the ranking's own numbers |
 | What changed? | Both rankings, each film's movement, and an honest "no meaningful change" |
 
@@ -126,6 +126,32 @@ count.
 > on *Why this movie?*. TMDB is free for non-commercial use; confirm the licence
 > before sharing the demo externally (RFC §12).
 
+## Collection (continuous since 2026-09-30)
+
+After **I agree**, Scene collects **continuously, in the foreground and the
+background**, until consent is withdrawn in Settings:
+
+- **Heart rate** from the chosen source (and RR / HRV when it provides them).
+- **Behavior**, via `synheart_behavior` through Synheart Core
+  (`behavior: true`): taps, scrolls and swipes in Scene (Scene only — Android
+  gives no touch events from other apps), app switches, notification events
+  (received / opened / ignored; needs Notification access in system Settings),
+  call events (answered / ignored; needs the phone permission) and phone motion
+  (raw accelerometer into the runtime). **Never content, text, senders or
+  numbers; no typing.**
+
+On Android a foreground service (`SceneForegroundService`, type `health`) shows
+an ongoing *"Scene is reading your current state"* notification and keeps the
+process alive, and the Flutter engine is created once in `SceneApplication` and
+cached, so it outlives the activity. Without that, native collectors keep
+sending to a detached engine and the events are lost. **iOS is foreground only** for now.
+
+Every Synheart reading with evidence updates the state and the picks live; a
+check-in just waits for the next one. This reverses the earlier check-in-only
+rule and **RFC §5's "no passive background collection without a separate
+product and privacy review"** — a product decision on 2026-09-30 that still
+needs that review before any external demo.
+
 ## The check-in and its source
 
 1. From Movie DNA tap **Start my Synheart check-in** (or *Do a Synheart
@@ -134,11 +160,10 @@ count.
 3. **Choose a source** (once): the **Galaxy Watch** app, a **Bluetooth
    heart-rate strap** (scan, then tap it), **Apple Health / Health Connect**, or
    a **WearSim** link (`wearsim://pair?endpoint=ws://…` opens Scene directly, or
-   paste it). Settings shows the live BPM so you can test it; leaving Settings
-   stops it.
+   paste it). Settings shows the live BPM; the source stays connected.
 4. Tap **Start check-in** and sit back. It usually takes one to two minutes
-   (HSI windows are about 60 s), ends at the first reading above the gate, and
-   **stops collecting**. After 3 minutes without one it says *Not enough
+   (HSI windows are about 60 s) and ends at the next reading above the gate;
+   collection continues. After 3 minutes without one it says *Not enough
    signal* — try again, use taste only, or change the source.
 
 The strap sends RR intervals as well as heart rate, so it usually gives the

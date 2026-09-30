@@ -75,7 +75,7 @@ void main() {
     expect(fake.calls, isEmpty);
   });
 
-  testWidgets('the full check-in: consent, choose a source, read, then collection stops (plan §4, §10)', (tester) async {
+  testWidgets('the full check-in: consent, choose a source, read; collection continues (2026-09-30)', (tester) async {
     await toTonight(tester);
     tester.view.physicalSize = const Size(1170, 7000); // whole screens, no scrolling
     await tester.tap(find.text('Do a Synheart check-in'));
@@ -83,13 +83,14 @@ void main() {
 
     // Consent first; nothing has started.
     expect(find.text('Let Scene read your current state'), findsOneWidget);
-    expect(find.textContaining('Only during a check-in'), findsOneWidget);
+    expect(find.textContaining('also when Scene is in the background'), findsOneWidget);
+    expect(find.textContaining('Taps, scrolls and swipes'), findsOneWidget);
     expect(fake.calls, isEmpty);
     await tester.tap(find.text('I agree — continue'));
     await tester.pumpAndSettle();
-    expect(fake.calls, ['start']);
+    expect(fake.calls, ['start', 'permissions', 'background:on']);
 
-    // Choose and test the strap in Settings; leaving Settings pauses it.
+    // Choose the strap in Settings; it stays connected after leaving.
     expect(find.text('No source chosen yet'), findsOneWidget);
     await tester.tap(find.text('Choose a source'));
     await tester.pumpAndSettle();
@@ -100,13 +101,12 @@ void main() {
     fake.heartRateCtl.add(64);
     await tester.pump();
     expect(find.text('Signal arriving · 64 BPM'), findsOneWidget);
-    fake.emit(const CurrentState(stress: AxisReading(0.8, 0.8), source: StateSource.synheart));
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(fake.calls.last, 'disconnect', reason: 'leaving Settings stops collection');
+    expect(fake.calls.last, 'ble:hrm-1', reason: 'collection is continuous: nothing disconnects after connecting');
     expect(find.text('No state'), findsNothing, reason: 'we are on the check-in, not home');
 
-    // The check-in reconnects the strap and reads.
+    // The check-in waits for the next reading from the connected strap.
     expect(find.text('Polar H10'), findsOneWidget);
     await tester.tap(find.text('Start check-in'));
     // Not pumpAndSettle: the reading screen animates, and settling would run
@@ -121,7 +121,7 @@ void main() {
     fake.emit(const CurrentState(stress: AxisReading(0.8, 0.8), capacity: AxisReading(0.3, 0.7), source: StateSource.synheart));
     await tester.pumpAndSettle();
 
-    // The plan's Current State card; collection has stopped.
+    // The plan's Current State card; collection continues.
     expect(find.text('Your current state'), findsOneWidget);
     expect(find.text('This may be a good evening to unwind.'), findsOneWidget);
     expect(find.text('Mental load'), findsOneWidget);
@@ -129,7 +129,7 @@ void main() {
     expect(find.text('Not available'), findsNWidgets(2)); // energy and engagement were not in the reading
     expect(find.text('Unwind'), findsOneWidget);
     expect(find.text('Help me unwind (suggested)'), findsOneWidget);
-    expect(fake.calls.last, 'disconnect');
+    expect(fake.calls.last, 'ble:hrm-1', reason: 'the check-in did not stop collection');
 
     await tester.tap(find.text("See tonight's picks"));
     await tester.pumpAndSettle();

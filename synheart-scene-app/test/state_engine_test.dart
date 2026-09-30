@@ -30,22 +30,36 @@ void main() {
     expect(fake.calls, isEmpty);
   });
 
-  group('outside a check-in', () {
-    test('a connected source only feeds the live view — readings never publish', () async {
+  group('continuous collection (2026-09-30)', () {
+    test('consent asks for the behavior permissions and starts background collection', () async {
+      await engine.consent();
+      expect(fake.calls, ['start', 'permissions', 'background:on']);
+      expect(fake.background, isTrue);
+    });
+
+    test('withdrawing consent stops background collection and the runtime', () async {
+      await engine.consent();
+      await engine.withdraw();
+      expect(fake.calls.sublist(fake.calls.length - 2), ['background:off', 'stop']);
+      expect(fake.background, isFalse);
+    });
+
+    test('readings update the state live, without a check-in', () async {
       await engine.consent();
       await engine.connectPlatformHealth();
       expect(engine.display, DisplayState.listening);
-      fake.emit(unwind);
+      fake.emit(weak); // zero confidence: not used
       expect(published, isEmpty);
-      expect(engine.latest, isNotNull);
+      fake.emit(unwind);
+      expect(published.single.suggestedExperience, Experience.unwind);
+      fake.emit(unwind);
+      expect(published, hasLength(2));
     });
 
-    test('leaving Settings pauses collection but remembers the source', () async {
+    test('the chosen source stays connected', () async {
       await engine.consent();
       await engine.connectBluetooth(const WearableDevice('hrm-1', 'Polar H10'));
-      await engine.pauseSource();
-      expect(engine.source, WearableSource.none);
-      expect(fake.calls.last, 'disconnect');
+      expect(engine.source, WearableSource.bluetooth);
       expect(engine.chosenName, 'Polar H10');
     });
   });
@@ -54,16 +68,15 @@ void main() {
     setUp(() async {
       await engine.consent();
       await engine.connectPlatformHealth();
-      await engine.pauseSource();
       fake.calls.clear();
     });
 
-    test('reconnects the chosen source, publishes the first confident reading, then stops collecting', () async {
+    test('waits for the next reading with evidence, and collection continues after it', () async {
       await engine.startCheckIn();
-      expect(fake.calls, ['disconnect', 'health']);
+      expect(fake.calls, isEmpty, reason: 'the source is already connected');
       expect(engine.checkIn, CheckInPhase.reading);
 
-      fake.emit(weak); // not confident: keep reading
+      fake.emit(weak); // no evidence: keep waiting
       expect(published, isEmpty);
       expect(engine.display, DisplayState.notEnoughEvidence);
 
@@ -72,11 +85,11 @@ void main() {
       expect(published.single.capturedAt, now);
       expect(engine.checkIn, CheckInPhase.done);
       await pumpEventQueue();
-      expect(fake.calls.last, 'disconnect');
-      expect(engine.source, WearableSource.none);
+      expect(fake.calls, isNot(contains('disconnect')));
+      expect(engine.source, WearableSource.platformHealth);
 
-      fake.emit(unwind); // after the check-in: ignored
-      expect(published, hasLength(1));
+      fake.emit(unwind); // after the check-in: still live
+      expect(published, hasLength(2));
     });
 
     test('with no confident reading it ends as "not enough signal" after the timeout', () {
@@ -87,7 +100,7 @@ void main() {
         async.elapse(SceneStateEngine.checkInTimeout + const Duration(seconds: 1));
         expect(engine.checkIn, CheckInPhase.notEnoughSignal);
         expect(published, isEmpty);
-        expect(fake.calls.last, 'disconnect');
+        expect(fake.calls, isNot(contains('disconnect')), reason: 'collection continues');
       });
     });
 
@@ -149,11 +162,12 @@ void main() {
       });
     });
 
-    test('cancelling stops collection', () async {
+    test('cancelling ends the check-in, not collection', () async {
       await engine.startCheckIn();
       await engine.cancelCheckIn();
       expect(engine.checkIn, CheckInPhase.idle);
-      expect(fake.calls.last, 'disconnect');
+      expect(fake.calls, isNot(contains('disconnect')));
+      expect(engine.source, WearableSource.platformHealth);
     });
 
     test('liveness follows the heart-rate samples', () async {
@@ -167,14 +181,13 @@ void main() {
   });
 
   group('Galaxy Watch', () {
-    test('connecting names the watch; a check-in reconnects it', () async {
+    test('connecting names the watch; a check-in keeps using it', () async {
       await engine.consent();
       await engine.connectWatch();
       expect(engine.source, WearableSource.watch);
       expect(engine.chosenName, 'Galaxy Watch6');
-      await engine.pauseSource();
       await engine.startCheckIn();
-      expect(fake.calls.where((c) => c == 'watch'), hasLength(2));
+      expect(fake.calls.where((c) => c == 'watch'), hasLength(1));
       expect(engine.sourceName, 'Galaxy Watch6');
     });
 
@@ -199,18 +212,18 @@ void main() {
           throwsFormatException);
     });
 
-    test('a presentation cue completes a check-in with its seeded reading', () async {
+    test('a presentation cue updates the state live, and completes a check-in', () async {
       await engine.consent();
       await engine.pairWearSim(Uri.parse('wearsim://pair?endpoint=ws://127.0.0.1:9/s'));
       expect(fake.calls.last, 'wearsim:ws://127.0.0.1:9/s');
 
-      fake.cuesCtl.add('ease'); // outside a check-in: no effect on picks
-      expect(published, isEmpty);
-
-      await engine.startCheckIn();
-      fake.cuesCtl.add('ease');
+      fake.cuesCtl.add('ease'); // outside a check-in: live, like any reading
       expect(published.single.suggestedExperience, Experience.unwind);
       expect(published.single.source, StateSource.wearSim);
+
+      await engine.startCheckIn();
+      fake.cuesCtl.add('clarity');
+      expect(published, hasLength(2));
       expect(engine.checkIn, CheckInPhase.done);
     });
   });

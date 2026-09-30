@@ -24,9 +24,10 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 | Output | `Synheart.onStateUpdate` → `HSIState.hsi` axes `focus`, `stress`, `arousal`, `capacity`; each `{value 0–1, confidence 0–1}`. `sleep` and the digital axes are not used |
 | Sources | The Scene **Galaxy Watch** (Wear OS) app, relayed over the Wearable Data Layer (`WatchRelay`, provider `wear_os`); Apple Health (iOS) / Health Connect (Android) via `startWearCollection`; standard BLE heart-rate monitors via `BleHrmProvider`; WearSim pairing links (`ai.synheart.wearsim.signal.v1` over WebSocket) |
 | Inputs pushed | heart rate, RR intervals, vendor HRV (RMSSD); accelerometer from WearSim. The Galaxy Watch sends **heart rate only** (Health Services' `HEART_RATE_BPM` has no RR), which is Tier 3 in Synheart's research ruling on HR-only wearables: Capacity withheld, other axes capped, confidence ×0.60. On device it gave 0.00–0.17 |
-| Consent to the runtime | `biosignals: true`; `behavior`, `phoneContext`, `allowCloud`, `allowResearch`, `allowVendorSync`, `syni`: all `false` |
+| Consent to the runtime | `biosignals: true`, `behavior: true` (since 2026-09-30); `phoneContext`, `allowCloud`, `allowResearch`, `allowVendorSync`, `syni`: all `false` |
+| Behavior config | `BehaviorConfig(enableGestureTracking: true, enableTypingTracking: false, emitRawMotionSamples: true)`; app-switch, notification (Notification access) and call (phone permission) events from `synheart_behavior`'s collectors |
 | Task type | Not set. It modulates confidence, and choosing a film is not a focus task |
-| Collection window | **Only during a check-in**: from *Start check-in* until the first reading above the gate, a 3-minute timeout, or Cancel. Settings may connect a source to test it and stops it on leaving. Readings outside a check-in never reach the picks (RFC §5: no passive background collection) |
+| Collection window | **Continuous** (product decision, 2026-09-30): from consent until it is withdrawn, in the foreground and — on Android, through a foreground service with an ongoing notification — the background. Every reading with evidence updates the picks; a check-in waits for the next one. Reverses RFC §5's "no passive background collection"; needs a privacy review. Until 2026-09-30: only during a check-in |
 
 > **GAP:** "Cloud upload is off" is guaranteed by the consent form above.
 > Whether `Synheart.initialize()` itself contacts a server (for example, for

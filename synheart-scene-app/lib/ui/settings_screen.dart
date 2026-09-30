@@ -41,9 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    // Settings only chooses and tests a source: collection stops on leaving,
-    // and happens again only during a check-in.
-    _engine.pauseSource();
+    // Collection is continuous: leaving Settings keeps the source connected.
     _link.dispose();
     super.dispose();
   }
@@ -94,7 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: PageBody(
         children: [
-          if (!engine.consented) ..._consentCard(context, engine) else ..._sources(context, engine),
+          if (!engine.consented) ..._consentCard(context, engine) else ...[..._sources(context, engine), const SizedBox(height: 28), _BehaviorSection(backend: engine.backend)],
           const SizedBox(height: 28),
           ..._demo(context),
           const SizedBox(height: 28),
@@ -120,12 +118,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final t = Theme.of(context).textTheme;
     final connected = engine.source != WearableSource.none;
     return [
-      const Eyebrow('Source for check-ins'),
+      const Eyebrow('Heart-rate source'),
       const SizedBox(height: 6),
       Text(engine.chosenName ?? 'Choose a source', style: t.headlineSmall),
       const SizedBox(height: 4),
       Text(
-        'Scene reads it only during a check-in. Connecting here tests it; it stops when you leave Settings.',
+        'Scene reads it continuously, also in the background, while you have agreed. Withdraw consent below to stop.',
         style: t.bodyMedium?.copyWith(color: SceneColors.sage),
       ),
       if (connected) ...[
@@ -263,5 +261,68 @@ class _FilmData extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// What behavior signals Scene collects, and Notification access (only the
+/// person can grant it, in system Settings; re-checked on return).
+class _BehaviorSection extends StatefulWidget {
+  const _BehaviorSection({required this.backend});
+
+  final SignalBackend backend;
+
+  @override
+  State<_BehaviorSection> createState() => _BehaviorSectionState();
+}
+
+class _BehaviorSectionState extends State<_BehaviorSection> with WidgetsBindingObserver {
+  bool? _access;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final granted = await widget.backend.notificationAccessGranted();
+    if (mounted) setState(() => _access = granted);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Eyebrow('Behavior signals'),
+      const SizedBox(height: 6),
+      Text(
+        'Taps, scrolls and swipes in Scene, app switches, notification and call events, and motion — '
+        'never content, text, senders or numbers. Collected continuously, also in the background.',
+        style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+      ),
+      const SizedBox(height: 10),
+      if (_access == true)
+        Text('Notification events: on', style: t.bodyMedium)
+      else ...[
+        Text('Notification events need Notification access.', style: t.bodyMedium),
+        const SizedBox(height: 6),
+        OutlinedButton(
+          onPressed: widget.backend.openNotificationAccess,
+          child: const Text('Allow notification access'),
+        ),
+      ],
+    ]);
   }
 }

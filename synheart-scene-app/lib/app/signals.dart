@@ -57,6 +57,18 @@ abstract class SignalBackend {
 
   /// Runtime status and sample counters for the `[scene-signal]` log.
   Map<String, Object?> diagnostics();
+
+  /// Keep collecting while Scene is in the background (Android: a foreground
+  /// service with an ongoing notification). No-op where unsupported.
+  Future<void> setBackground(bool on);
+
+  /// The runtime permissions behavior signals need: posting the background
+  /// notification (Android 13+) and phone state for call events.
+  Future<void> requestBehaviorPermissions();
+
+  /// Notification access (system Settings) for notification events.
+  Future<bool> notificationAccessGranted();
+  Future<void> openNotificationAccess();
 }
 
 /// The real backend: synheart_core's runtime and wearable modules, wired the
@@ -148,6 +160,15 @@ class SynheartSignals implements SignalBackend {
         developer: 'Synheart AI',
         allowUnsignedCapabilities: true,
         wearConfig: const WearConfig(enableHighFrequencyHrv: true),
+        // Behavior signals (2026-09-30): taps, scrolls and swipes in Scene,
+        // plus motion (raw accelerometer into the runtime). Typing is not
+        // collected. App switches, notification and call events come from
+        // synheart_behavior's own collectors once their permissions exist.
+        behaviorConfig: const BehaviorConfig(
+          enableGestureTracking: true,
+          enableTypingTracking: false,
+          emitRawMotionSamples: true,
+        ),
         consentConfig: ConsentConfig(
           deviceId: 'scene-${Platform.operatingSystem}-device',
           platform: Platform.operatingSystem,
@@ -156,13 +177,13 @@ class SynheartSignals implements SignalBackend {
       ),
     );
     // The user agreed on Scene's own consent sheet. Record exactly that with
-    // the runtime: biosignals on this device, nothing else, no cloud.
+    // the runtime: biosignals and behavior on this device, no cloud.
     final form = Synheart.consentGetEditableFormTyped();
     if (form == null) throw StateError('The Synheart runtime did not provide a consent form.');
     await Synheart.consentSubmitFormTyped(
       form: form.copyWith(
         biosignals: true,
-        behavior: false,
+        behavior: true,
         phoneContext: false,
         allowCloud: false,
         allowResearch: false,
@@ -294,6 +315,30 @@ class SynheartSignals implements SignalBackend {
       if (x == null || y == null || z == null) continue;
       Synheart.pushAccel(now - (motion.length - 1 - i) * 40, x, y, z);
     }
+  }
+
+  static const _background = MethodChannel('ai.synheart.scene/background');
+
+  @override
+  Future<void> setBackground(bool on) async {
+    if (!Platform.isAndroid) return; // iOS: foreground only for now.
+    await _background.invokeMethod<bool>(on ? 'start' : 'stop');
+  }
+
+  @override
+  Future<void> requestBehaviorPermissions() async {
+    if (!Platform.isAndroid) return;
+    // Denials are fine: the matching signal is simply not collected.
+    await [Permission.notification, Permission.phone].request();
+  }
+
+  @override
+  Future<bool> notificationAccessGranted() async =>
+      Platform.isAndroid && (await _background.invokeMethod<bool>('notificationAccessGranted') ?? false);
+
+  @override
+  Future<void> openNotificationAccess() async {
+    if (Platform.isAndroid) await _background.invokeMethod<bool>('openNotificationAccess');
   }
 
   @override

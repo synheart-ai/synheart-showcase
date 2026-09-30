@@ -27,16 +27,21 @@ class ConsentCard extends StatelessWidget {
         Text('Let Scene read your current state', style: t.headlineSmall),
         const SizedBox(height: 12),
         Text(
-          'A short Synheart check-in reads your wearable for a minute or two to suggest films that may fit this evening. '
+          'Synheart reads your heart rate and how you use your phone to suggest films that may fit right now. '
           'Nothing is collected until you agree.',
           style: t.bodyLarge,
         ),
         const SizedBox(height: 16),
         const _Point(icon: Icons.favorite_border, title: 'What is read', text: 'Heart rate from the one source you choose, and heart-rate variability when it provides it. The Galaxy Watch sends heart rate only.'),
         const _Point(
+          icon: Icons.touch_app_outlined,
+          title: 'How you use your phone',
+          text: 'Taps, scrolls and swipes in Scene; when you switch apps; notification and call events (never their content, sender or number); and phone motion. No typing, no text.',
+        ),
+        const _Point(
           icon: Icons.timer_outlined,
           title: 'When',
-          text: 'Only during a check-in. Collection stops as soon as the check-in ends.',
+          text: 'All the time after you agree, also when Scene is in the background, with an ongoing notification. Withdraw consent in Settings to stop.',
         ),
         const _Point(
           icon: Icons.phone_iphone,

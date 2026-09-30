@@ -95,8 +95,25 @@ Left as is, and documented: watched films are always excluded, not optionally
 (§7); there is no check for incomplete catalogue entries (§7) — all 45 are
 hand-curated.
 
+## Decision 2026-09-30 — continuous behavior and biosignal collection
+
+Product decision (user): after consent, Scene collects **heart rate and
+behavior continuously, in the foreground and the background**, and the state
+updates live; the check-in is optional. Behavior = taps / scrolls / swipes in
+Scene, app switches, notification and call events (no content), motion; no
+typing. Android keeps running through a foreground service with an ongoing
+notification and a cached Flutter engine; iOS is foreground only.
+
+This **reverses** the 2026-09-29 fix above ("Scene now collects only during a
+check-in") and goes against **RFC §5 out of scope: "Passive background
+collection without a separate product and privacy review."** The consent card,
+Settings and README now say what is collected and when (RFC §6). The privacy
+review itself is **not done** — needed before any external demo.
+
 ## Still open, and not code
 
+- **Privacy review for continuous collection** (RFC §5), and the Play policy
+  declaration for the notification listener, if Scene is ever published.
 - **The confidence gate:** "> 0" is temporary. With it, a heart-rate-only
   source always "passes" and the live *Not enough signal* path needs exactly
   zero confidence. Decide before any external demo (see state-mapping.md).
