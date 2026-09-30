@@ -97,6 +97,24 @@ capacity, stress, arousal, mental_fatigue and focus_quality higher-is-more.
 > read 0.79@1.00. Scene treats it as unavailable ("too early to tell").
 > Confirm with the runtime team.
 
+**The state's share scales with confidence** (`stateTrust`, 2026-09-30).
+trust = mean confidence of the driving axes ÷ 0.45, clamped to 0–1; the
+state's weight is 35 % × trust (15 % × trust with an intent), and what it
+gives up goes to taste. The user's choice keeps its share. Demo data and
+WearSim keep trust 1, so the pinned demo lists are unchanged. *Why this
+movie?* says "less than usual, because Synheart is not sure about this
+reading". On device the full 35 % turned a 0.011 taste gap (Blade Runner
+2049 .896, John Wick .887, Baby Driver .885) into the same #1 every minute
+from readings at 0.04–0.36 confidence. With trust ≈ 0.77 (focus quality at
+0.94 lifts the mean) Baby Driver still leads, by 0.004–0.012 — the taste
+top three are that close, so any reading reorders them.
+
+**Not driving while their direction is disputed:** `cognitive_load`,
+`interruption_pressure` (and `interaction_mode`, undocumented ends) —
+`HsiAxis.drivesPicks`. Shown on the card (Mental load, Interruptions),
+never in the suggestion or the ranking. Revisit when the runtime team
+confirms the direction.
+
 **Behavior axes drive only at confidence ≥ 0.45** (`CurrentState.drivers`).
 Below that they are shown on the card with the low-confidence tag but move
 neither the suggestion nor the ranking; the core four keep the temporary

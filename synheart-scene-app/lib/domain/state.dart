@@ -83,6 +83,15 @@ enum HsiAxis {
   /// Added with behavior collection; weighted less than the core four.
   bool get isSecondary => index >= HsiAxis.cognitiveLoad.index;
 
+  /// Whether the axis may drive the suggestion and the ranking at all.
+  /// False while its direction is disputed: runtime 0.32.0 labels
+  /// cognitive_load and interruption_pressure lower_is_more, but on device
+  /// (2026-09-30) their values fit higher-is-more better — a confident
+  /// interruption_pressure 0.15@0.60 suggested Easy watch while focus
+  /// quality read 0.93@1.00. Interaction mode's ends are undocumented.
+  /// They stay on the card. Revisit when the runtime team confirms.
+  bool get drivesPicks => this != cognitiveLoad && this != interruptionPressure && this != interactionMode;
+
   static HsiAxis? fromWire(String name) {
     for (final a in values) {
       if (a.wireName == name || (a == sleep && name == 'sleep')) return a;
@@ -416,7 +425,7 @@ class CurrentState extends Equatable {
   CurrentState get drivers {
     final drop = {
       for (final a in HsiAxis.values)
-        if (a.isSecondary && (reading(a)?.isLowConfidence ?? false)) a,
+        if (!a.drivesPicks || (a.isSecondary && (reading(a)?.isLowConfidence ?? false))) a,
     };
     if (drop.isEmpty) return this;
     AxisReading? keep(HsiAxis a) => drop.contains(a) ? null : reading(a);

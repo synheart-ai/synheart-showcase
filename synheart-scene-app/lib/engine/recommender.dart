@@ -16,10 +16,14 @@ const contextWeight = 0.15;
 /// The weights actually applied to one ranking — part of each film's
 /// contribution record, so explanations cite what was really used.
 class Weights {
-  const Weights(this.taste, this.state, this.context);
+  const Weights(this.taste, this.state, this.context, {this.trust = 1});
   final double taste;
   final double state;
   final double context;
+
+  /// How much of its usual share the state got (0–1): below 1 when the
+  /// reading's confidence is under Resona's 0.45 — see [stateTrust].
+  final double trust;
 
   /// Taste only; an explicit intent still counts, because it is the user's
   /// own choice rather than a Synheart inference.
@@ -27,11 +31,34 @@ class Weights {
 
   /// Taste + state. An explicit intent takes precedence over the inferred
   /// need (RFC §4), so it swaps shares with the state: 50 / 15 / 35.
-  static Weights withState({required bool hasIntent}) =>
-      hasIntent ? const Weights(tasteWeight, contextWeight, stateWeight) : const Weights(tasteWeight, stateWeight, contextWeight);
+  /// The state's share is scaled by [trust]; what it gives up goes to
+  /// taste, and the user's own choice keeps its share.
+  static Weights withState({required bool hasIntent, double trust = 1}) {
+    final t = _clamp01(trust);
+    final state = (hasIntent ? contextWeight : stateWeight) * t;
+    final context = hasIntent ? stateWeight : contextWeight;
+    return Weights(1 - state - context, state, context, trust: t);
+  }
+
+  /// The state got less than its usual share.
+  bool get isReduced => usesState && trust < 1;
 
   bool get usesState => state > 0;
   bool get usesContext => context > 0;
+}
+
+/// How far a reading may move the ranking (0–1): the mean confidence of the
+/// axes that drive it, against Resona's 0.45. Full at 0.45 or more. Seeded
+/// demo data and WearSim keep their full effect. Seen on device 2026-09-30:
+/// with every driving axis at 0.04–0.36 confidence (capacity and arousal
+/// near their 0.50 defaults), the full 35 % turned a 0.011 taste gap into
+/// the same #1 every minute.
+double stateTrust(CurrentState s) {
+  if (s.source != StateSource.synheart) return 1;
+  final axes = s.drivers.availableAxes;
+  if (axes.isEmpty) return 0;
+  final mean = axes.map((a) => s.reading(a)!.confidence).reduce((a, b) => a + b) / axes.length;
+  return _clamp01(mean / AxisReading.resonaMinConfidence);
 }
 
 /// Descriptive fit instead of a numerical "94% match" (RFC §7).
@@ -209,7 +236,8 @@ class Recommender {
         null => 0.6,
       };
 
-  Recommendation score(Film f, TasteProfile p, {CurrentState? state, ViewingContext context = const ViewingContext(), RecommendationMode mode = RecommendationMode.tastePlusState}) {
+  Recommendation score(Film f, TasteProfile p,
+      {CurrentState? state, ViewingContext context = const ViewingContext(), RecommendationMode mode = RecommendationMode.tastePlusState, double? trust}) {
     // A reading with no usable axis is no state at all: taste only.
     if (state != null && !state.hasEvidence) state = null;
     final taste = tasteMatch(f, p);
@@ -218,7 +246,7 @@ class Recommender {
     final hasIntent = context.intent != null;
     final w = mode == RecommendationMode.tasteOnly || state == null
         ? Weights.tasteOnly(hasIntent: hasIntent)
-        : Weights.withState(hasIntent: hasIntent);
+        : Weights.withState(hasIntent: hasIntent, trust: trust ?? stateTrust(state));
     final total = w.taste * taste + w.state * st + w.context * ctx;
 
     final genres = f.genres.toList()..sort((a, b) => p.affinityFor(b).compareTo(p.affinityFor(a)));
@@ -250,10 +278,11 @@ class Recommender {
     Set<String> hidden = const {},
   }) {
     final max = context.maxRuntimeMinutes;
+    final trust = state == null || !state.hasEvidence ? null : stateTrust(state);
     final ranked = pool
         .where((f) => !p.seenFilmIds.contains(f.id) && !hidden.contains(f.id))
         .where((f) => max == null || f.runtimeMinutes <= max)
-        .map((f) => score(f, p, state: state, context: context, mode: mode))
+        .map((f) => score(f, p, state: state, context: context, mode: mode, trust: trust))
         .toList()
       ..sort((a, b) {
         final byScore = b.score.compareTo(a.score);

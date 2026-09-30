@@ -113,7 +113,9 @@ Explanation explain(
       : tasteOnlyRank > 5
           ? ' On taste alone it was #$tasteOnlyRank; tonight\'s context brought it into the list.'
           : ' On taste alone it was #$tasteOnlyRank.';
-  final effect = 'Taste counted for ${_pct(w.taste)}, your current state for ${_pct(w.state)} and your choices for ${_pct(w.context)}. '
+  final effect = 'Taste counted for ${_pct(w.taste)}, your current state for ${_pct(w.state)}'
+      '${w.isReduced ? ' (less than usual, because Synheart is not sure about this reading)' : ''}'
+      ' and your choices for ${_pct(w.context)}. '
       'Support: ${supportLabel(r.taste).toLowerCase()} on taste, ${supportLabel(r.state).toLowerCase()} for right now.$moved';
 
   final what = traits.isNotEmpty ? traits.first : (genres.isNotEmpty ? '${genres.first} stories' : 'the films you like');

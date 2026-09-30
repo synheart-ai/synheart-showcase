@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scene/app/signals.dart';
 import 'package:scene/data/demo_persona.dart';
 import 'package:scene/domain/state.dart';
+import 'package:scene/engine/explain.dart';
 import 'package:scene/engine/recommender.dart';
 import 'package:scene/engine/taste_builder.dart';
 
@@ -167,10 +168,10 @@ void main() {
   });
 
   group('behavior axes drive the picks only at confidence 0.45 or more', () {
-    test('seen on device: cognitive_load 0.06@0.09 shows, but suggests nothing', () {
-      const s = CurrentState(cognitiveLoad: AxisReading(0.06, 0.09), source: StateSource.synheart);
-      expect(s.levelOf(PlainSignal.mentalLoad), SignalLevel.high, reason: 'shown, with the low-confidence tag');
-      expect(s.isLowConfidenceSignal(PlainSignal.mentalLoad), isTrue);
+    test('seen on device: a low-confidence behavior axis shows, but suggests nothing', () {
+      const s = CurrentState(mentalFatigue: AxisReading(0.94, 0.09), source: StateSource.synheart);
+      expect(s.levelOf(PlainSignal.tiredness), SignalLevel.high, reason: 'shown, with the low-confidence tag');
+      expect(s.isLowConfidenceSignal(PlainSignal.tiredness), isTrue);
       expect(s.suggestedExperience, isNull);
       expect(StateTargets.from(s).strain, isNull);
     });
@@ -181,22 +182,28 @@ void main() {
     });
 
     test('a confident behavior axis drives', () {
-      const s = CurrentState(interruptionPressure: AxisReading(0.1, 0.9), source: StateSource.synheart);
+      const s = CurrentState(mentalFatigue: AxisReading(0.8, 0.9), source: StateSource.synheart);
       expect(s.suggestedExperience, Experience.easyWatch);
     });
   });
 
     group('policy with the behavior axes', () {
-    test('high cognitive load (a low score) suggests unwinding', () {
-      const s = CurrentState(cognitiveLoad: AxisReading(0.25, 0.6), source: StateSource.synheart);
-      expect(s.suggestedExperience, Experience.unwind);
+    test('disputed-direction axes are shown but never drive (seen on device)', () {
+      // interruption_pressure 0.15@0.60 once suggested Easy watch while focus
+      // quality read 0.93@1.00; cognitive_load's label fits its values poorly.
+      const load = CurrentState(cognitiveLoad: AxisReading(0.25, 0.9), source: StateSource.synheart);
+      const interrupted = CurrentState(interruptionPressure: AxisReading(0.1, 0.9), source: StateSource.synheart);
+      expect(load.levelOf(PlainSignal.mentalLoad), SignalLevel.high, reason: 'still on the card');
+      expect(interrupted.levelOf(PlainSignal.interruptions), SignalLevel.high);
+      expect(load.suggestedExperience, isNull);
+      expect(interrupted.suggestedExperience, isNull);
+      expect(StateTargets.from(load).strain, isNull);
+      expect(HsiAxis.values.where((a) => !a.drivesPicks), [HsiAxis.cognitiveLoad, HsiAxis.interruptionPressure, HsiAxis.interactionMode]);
     });
 
-    test('tiredness or heavy interruptions suggest an easy watch', () {
+    test('tiredness suggests an easy watch', () {
       const tired = CurrentState(mentalFatigue: AxisReading(0.8, 0.6), source: StateSource.synheart);
-      const interrupted = CurrentState(interruptionPressure: AxisReading(0.1, 0.6), source: StateSource.synheart);
       expect(tired.suggestedExperience, Experience.easyWatch);
-      expect(interrupted.suggestedExperience, Experience.easyWatch);
     });
 
     test('focus quality lifts engagement to "stay engaged"', () {
@@ -219,7 +226,7 @@ void main() {
 
     test('behavior axes count less than the core axes', () {
       final core = StateTargets.from(const CurrentState(stress: AxisReading(0.8, 0.5), source: StateSource.synheart));
-      final behavior = StateTargets.from(const CurrentState(cognitiveLoad: AxisReading(0.2, 0.6), source: StateSource.synheart));
+      final behavior = StateTargets.from(const CurrentState(mentalFatigue: AxisReading(0.8, 0.6), source: StateSource.synheart));
       expect(behavior.strain, lessThan(core.strain!));
       expect(behavior.strain, closeTo(secondaryWeight * 0.8, 1e-9));
     });
@@ -227,6 +234,41 @@ void main() {
     test('a lower mood alone prefers a lighter tone', () {
       final t = StateTargets.from(const CurrentState(valence: AxisReading(0.2, 0.6), source: StateSource.synheart));
       expect(t.prefersLightTone, isTrue);
+    });
+  });
+
+  group('the share of the state scales with confidence', () {
+    const low = CurrentState(focus: AxisReading(0.3, 0.09), stress: AxisReading(0.2, 0.09), source: StateSource.synheart);
+
+    test('mean confidence 0.09 gives a fifth of the usual share; the rest goes to taste', () {
+      expect(stateTrust(low), closeTo(0.2, 1e-9));
+      final w = Weights.withState(hasIntent: false, trust: stateTrust(low));
+      expect(w.state, closeTo(0.07, 1e-9));
+      expect(w.context, 0.15);
+      expect(w.taste + w.state + w.context, closeTo(1, 1e-9));
+      expect(w.isReduced, isTrue);
+    });
+
+    test('at 0.45 or more, and for demo data, the full share', () {
+      const confident = CurrentState(focus: AxisReading(0.3, 0.6), source: StateSource.synheart);
+      const preset = CurrentState(focus: AxisReading(0.3, 0.09), source: StateSource.preset);
+      expect(stateTrust(confident), 1);
+      expect(stateTrust(preset), 1);
+    });
+
+    test('with an intent, the choice keeps its share', () {
+      final w = Weights.withState(hasIntent: true, trust: 0.5);
+      expect(w.context, stateWeight);
+      expect(w.state, closeTo(contextWeight * 0.5, 1e-9));
+      expect(w.taste + w.state + w.context, closeTo(1, 1e-9));
+    });
+
+    test('rankings use it, and Why says the share was reduced', () {
+      final persona = buildTasteProfile(demoPersonaAnswers);
+      final r = const Recommender().recommend(persona, state: low).first;
+      expect(r.weights.state, closeTo(0.07, 1e-9));
+      final e = explain(r, state: low);
+      expect(e.effect, contains('less than usual, because Synheart is not sure about this reading'));
     });
   });
 }
