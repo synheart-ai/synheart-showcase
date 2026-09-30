@@ -36,7 +36,7 @@ class ConsentCard extends StatelessWidget {
         const _Point(
           icon: Icons.touch_app_outlined,
           title: 'How you use your phone',
-          text: 'Taps, scrolls and swipes in Scene; when you switch apps; notification and call events (never their content, sender or number); and phone motion. No typing, no text.',
+          text: 'Taps, scrolls and swipes in Scene; when you switch apps; notification and call events, with the name of the app that posted a notification (never its content or sender, never a caller\'s number); and phone motion. No typing, no text.',
         ),
         const _Point(
           icon: Icons.timer_outlined,

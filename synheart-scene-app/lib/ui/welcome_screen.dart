@@ -62,8 +62,8 @@ class WelcomeScreen extends StatelessWidget {
           const Callout(
             title: 'Find the right movie for right now',
             child: Text(
-              'First, Scene learns what you normally enjoy. Then a short Synheart check-in adds '
-              'context about this moment — so your picks fit tonight, without changing who you are.',
+              'First, Scene learns what you normally enjoy. Then Synheart adds context about '
+              'this moment — so your picks fit tonight, without changing who you are.',
             ),
           ),
           const SizedBox(height: 20),
@@ -73,8 +73,9 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Powered by Synheart — reads your heart rhythm on this device during a short check-in. '
-                  'Nothing is collected until you agree, and raw heart data is never stored.',
+                  'Powered by Synheart — after you agree, it reads your heart rate and how you use your phone, '
+                  'on this device, also while Scene is in the background. Nothing is collected until you agree, '
+                  'and raw heart data is never stored.',
                   style: t.bodyMedium?.copyWith(color: SceneColors.sage),
                 ),
               ),

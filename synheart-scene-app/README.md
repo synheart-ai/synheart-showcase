@@ -135,7 +135,8 @@ background**, until consent is withdrawn in Settings:
 - **Behavior**, via `synheart_behavior` through Synheart Core
   (`behavior: true`): taps, scrolls and swipes in Scene (Scene only — Android
   gives no touch events from other apps), app switches, notification events
-  (received / opened / ignored; needs Notification access in system Settings),
+  (received / opened / ignored, with the posting app's package name, e.g.
+  `org.telegram.messenger`; needs Notification access in system Settings),
   call events (answered / ignored; needs the phone permission) and phone motion
   (raw accelerometer into the runtime). **Never content, text, senders or
   numbers; no typing.**

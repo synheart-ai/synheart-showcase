@@ -310,8 +310,9 @@ class _BehaviorSectionState extends State<_BehaviorSection> with WidgetsBindingO
       const Eyebrow('Behavior signals'),
       const SizedBox(height: 6),
       Text(
-        'Taps, scrolls and swipes in Scene, app switches, notification and call events, and motion — '
-        'never content, text, senders or numbers. Collected continuously, also in the background.',
+        'Taps, scrolls and swipes in Scene, app switches, notification and call events (with the name of '
+        'the app that posted a notification), and motion — never content, text, senders or numbers. '
+        'Collected continuously, also in the background.',
         style: t.bodyMedium?.copyWith(color: SceneColors.sage),
       ),
       const SizedBox(height: 10),
