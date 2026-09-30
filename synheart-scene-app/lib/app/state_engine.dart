@@ -336,6 +336,9 @@ class SceneStateEngine extends ChangeNotifier {
       _diag?.onReading(raw);
       CheckInDiagnostics.log('reading #${_diag?.readings} · ${CheckInDiagnostics.describeReading(raw)} · '
           '${reading.hasEvidence ? 'passes the gate' : 'below the gate'}');
+    } else {
+      CheckInDiagnostics.log('live reading · ${CheckInDiagnostics.describeReading(raw)} · '
+          '${reading.hasEvidence ? 'published' : 'no evidence'} · runtime ${backend.diagnostics()}');
     }
     // Live: every reading with evidence updates the state; during a check-in
     // it is also that check-in's result.
