@@ -85,7 +85,33 @@ void main() {
     });
   });
 
-  group('plain signals from the behavior axes', () {
+  group('directions follow the snapshot', () {
+    test('lower_is_more from the snapshot inverts; higher_is_more does not', () {
+      String snap(String dir) => jsonEncode({
+            'axes': {
+              'digital': [
+                {'name': 'interruption_pressure', 'score': 0.2, 'confidence': 0.5, 'direction': dir},
+              ],
+            },
+          });
+      final lower = SynheartSignals.fromHsiJson(snap('lower_is_more'));
+      final higher = SynheartSignals.fromHsiJson(snap('higher_is_more'));
+      final both = SynheartSignals.fromHsiJson(snap('bidirectional'));
+      expect(lower.plain(PlainSignal.interruptions), closeTo(0.8, 1e-9));
+      expect(higher.plain(PlainSignal.interruptions), closeTo(0.2, 1e-9));
+      expect(both.plain(PlainSignal.interruptions), isNull);
+      expect(CurrentState.fromJson(higher.toJson()).directionOf(HsiAxis.interruptionPressure), HsiDirection.higherIsMore);
+    });
+
+    test('the log marks each axis\'s direction', () {
+      final line = SynheartSignals.describeHsi(snapshot());
+      expect(line, contains('interruption_pressure=0.20@0.50↓'));
+      expect(line, contains('valence=0.30@0.20↔'));
+      expect(line, contains('focus=0.62@0.50 '));
+    });
+  });
+
+    group('plain signals from the behavior axes', () {
     test('interruptions invert interruption pressure (lower is more)', () {
       const s = CurrentState(interruptionPressure: AxisReading(0.2, 0.5), source: StateSource.synheart);
       expect(s.plain(PlainSignal.interruptions), closeTo(0.8, 1e-9));

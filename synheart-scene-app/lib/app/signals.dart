@@ -222,7 +222,14 @@ class SynheartSignals implements SignalBackend {
             for (final r in e.value as List)
               if (r is Map)
                 '${r['name']}=${r['score'] is num ? (r['score'] as num).toStringAsFixed(2) : '-'}'
-                    '@${r['confidence'] is num ? (r['confidence'] as num).toStringAsFixed(2) : '-'}',
+                    '@${r['confidence'] is num ? (r['confidence'] as num).toStringAsFixed(2) : '-'}'
+                    '${switch (r['direction']) {
+                  'lower_is_more' => '↓',
+                  'bidirectional' => '↔',
+                  'higher_is_more' => '',
+                  null => '?',
+                  final other => '($other)',
+                }}',
           ];
           parts.add('${e.key}{${items.join(' ')}}');
         }
@@ -277,6 +284,7 @@ class SynheartSignals implements SignalBackend {
   static CurrentState fromHsiJson(String rawJson, {Map<HsiAxis, AxisReading> typed = const {}, Set<Modality> basis = const {}}) {
     final axes = <HsiAxis, AxisReading>{};
     final withheld = <HsiAxis, String>{};
+    final directions = <HsiAxis, HsiDirection>{};
     String? contextLabel;
     String? appCategory;
     try {
@@ -290,6 +298,7 @@ class SynheartSignals implements SignalBackend {
             if (e is! Map || e['name'] is! String) continue;
             final a = HsiAxis.fromWire(e['name'] as String);
             if (a == null) continue;
+            if (HsiDirection.fromWire(e['direction']) case final dir?) directions[a] = dir;
             final score = e['score'];
             if (score is num) {
               final c = e['confidence'];
@@ -341,6 +350,7 @@ class SynheartSignals implements SignalBackend {
           if (axes[e.key] == null) e.key: e.value,
       },
       basis: basis,
+      directions: directions,
       contextLabel: contextLabel,
       appCategory: appCategory,
       source: StateSource.synheart,

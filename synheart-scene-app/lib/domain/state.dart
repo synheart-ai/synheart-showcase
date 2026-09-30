@@ -43,7 +43,15 @@ enum HsiDirection {
 
   /// Neither end is better, and the runtime does not document which end is
   /// which: `interaction_mode`. Shown, never ranked on.
-  bidirectional,
+  bidirectional;
+
+  /// The snapshot's `direction` string, or null when absent or unknown.
+  static HsiDirection? fromWire(Object? s) => switch (s) {
+        'higher_is_more' => higherIsMore,
+        'lower_is_more' => lowerIsMore,
+        'bidirectional' => bidirectional,
+        _ => null,
+      };
 }
 
 /// Every HSI axis Scene reads (HSI 1.3; runtime 0.32.0). The first four are
@@ -229,6 +237,7 @@ class CurrentState extends Equatable {
     this.capturedAt,
     this.withheld = const {},
     this.basis = const {},
+    this.directions = const {},
     this.contextLabel,
     this.appCategory,
   });
@@ -251,6 +260,14 @@ class CurrentState extends Equatable {
 
   /// What the reading was built from.
   final Set<Modality> basis;
+
+  /// Each axis's direction as the snapshot states it (HSI 1.3
+  /// `direction`); the enum's documented default when the snapshot is
+  /// silent. Scene follows the runtime's own label rather than a hard-coded
+  /// one.
+  final Map<HsiAxis, HsiDirection> directions;
+
+  HsiDirection directionOf(HsiAxis a) => directions[a] ?? a.direction;
 
   /// The runtime's guess at the current activity (`meta.synheart.context`),
   /// shown only under Details and never ranked on: it describes app use.
@@ -335,7 +352,12 @@ class CurrentState extends Equatable {
           return v.isEmpty ? null : v.reduce((a, b) => a + b) / v.length;
         }(),
       PlainSignal.tiredness => highest([valueOf(HsiAxis.mentalFatigue), inverted(HsiAxis.sleep)]),
-      PlainSignal.interruptions => inverted(HsiAxis.interruptionPressure),
+      PlainSignal.interruptions => switch (directionOf(HsiAxis.interruptionPressure)) {
+          HsiDirection.lowerIsMore => inverted(HsiAxis.interruptionPressure),
+          HsiDirection.higherIsMore => valueOf(HsiAxis.interruptionPressure),
+          // Which end is "more" is not stated: not shown as a level.
+          HsiDirection.bidirectional => null,
+        },
       PlainSignal.mood => valueOf(HsiAxis.valence),
     };
   }
@@ -401,6 +423,7 @@ class CurrentState extends Equatable {
         capturedAt: capturedAt ?? this.capturedAt,
         withheld: withheld,
         basis: basis,
+        directions: directions,
         contextLabel: contextLabel,
         appCategory: appCategory,
       );
@@ -414,6 +437,7 @@ class CurrentState extends Equatable {
         if (capturedAt != null) 'capturedAt': capturedAt!.toIso8601String(),
         if (withheld.isNotEmpty) 'withheld': {for (final e in withheld.entries) e.key.name: e.value},
         if (basis.isNotEmpty) 'basis': [for (final m in basis) m.name],
+        if (directions.isNotEmpty) 'directions': {for (final e in directions.entries) e.key.name: e.value.name},
       };
 
   static CurrentState fromJson(Map<String, dynamic> m) {
@@ -425,6 +449,7 @@ class CurrentState extends Equatable {
     final at = m['capturedAt'] as String?;
     final w = m['withheld'];
     final b = m['basis'];
+    final d = m['directions'];
     return CurrentState(
       focus: r(HsiAxis.focus),
       stress: r(HsiAxis.stress),
@@ -446,6 +471,13 @@ class CurrentState extends Equatable {
             }
           : const {},
       basis: b is List ? {for (final n in b) ?Modality.values.asNameMap()[n]} : const {},
+      directions: d is Map
+          ? {
+              for (final e in d.entries)
+                if (HsiAxis.values.asNameMap()[e.key] != null && HsiDirection.values.asNameMap()[e.value] != null)
+                  HsiAxis.values.asNameMap()[e.key]!: HsiDirection.values.asNameMap()[e.value]!,
+            }
+          : const {},
     );
   }
 
@@ -456,6 +488,7 @@ class CurrentState extends Equatable {
         capturedAt,
         withheld,
         basis,
+        directions,
         contextLabel,
         appCategory,
       ];

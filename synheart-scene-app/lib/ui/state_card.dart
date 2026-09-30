@@ -34,7 +34,7 @@ class StateCard extends StatelessWidget {
     String raw(HsiAxis a) {
       final r = reading.reading(a);
       if (r == null || !r.isAvailable) return reading.whyUnavailable(a) ?? 'not available';
-      final note = switch (a.direction) {
+      final note = switch (reading.directionOf(a)) {
         HsiDirection.lowerIsMore => ' (lower means more)',
         HsiDirection.bidirectional => ' (neither end is better)',
         HsiDirection.higherIsMore => '',
