@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:scene/app/movie_info_store.dart';
 import 'package:scene/data/catalogue.dart';
 import 'package:scene/data/tmdb.dart';
+import 'package:scene/data/tmdb_ids.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A fake TMDB: /search/movie and /movie/{id}, counting requests.
@@ -99,7 +100,8 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final seen = <http.Request>[];
-      final store = MovieInfoStore(prefs: prefs, client: TmdbClient('k', client: fakeTmdb(seen)));
+      // No pinned ids: this exercises the title-and-year search path.
+      final store = MovieInfoStore(prefs: prefs, client: TmdbClient('k', client: fakeTmdb(seen)), pinned: const {});
       await store.refresh(films);
       expect(store.matched, 2);
       expect(store['glass-onion']!.title, 'Glass Onion: A Knives Out Mystery');
@@ -110,8 +112,21 @@ void main() {
       expect(seen.length, before);
 
       // A new start with the network down still has the posters.
-      final offline = MovieInfoStore(prefs: prefs, client: TmdbClient('k', client: fakeTmdb([], status: 503)));
+      final offline = MovieInfoStore(prefs: prefs, client: TmdbClient('k', client: fakeTmdb([], status: 503)), pinned: const {});
       expect(offline['knives-out']!.posterPath, '/p1.jpg');
+    });
+
+    test('a pinned film is fetched by its id, with no title search', () async {
+      SharedPreferences.setMockInitialValues({});
+      final seen = <http.Request>[];
+      final store = MovieInfoStore(client: TmdbClient('k', client: fakeTmdb(seen)), pinned: const {'knives-out': 1});
+      await store.refresh(films.where((f) => f.id == 'knives-out').toList());
+      expect(store['knives-out']!.title, 'Knives Out');
+      expect(seen.where((r) => r.url.path == '/3/search/movie'), isEmpty);
+    });
+
+    test('every catalogue film is pinned (tool/resolve_tmdb.dart)', () {
+      expect(allFilms.where((f) => !tmdbIds.containsKey(f.id)).map((f) => f.id), isEmpty);
     });
 
     test('an API error is reported and nothing is lost', () async {

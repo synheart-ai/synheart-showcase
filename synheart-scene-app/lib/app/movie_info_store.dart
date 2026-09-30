@@ -14,12 +14,15 @@ import '../domain/film.dart';
 /// before anything is fetched, screens fall back to Scene's typographic
 /// posters. Ranking never depends on anything in here.
 class MovieInfoStore extends ChangeNotifier {
-  MovieInfoStore({this.prefs, TmdbClient? client}) : client = client ?? TmdbClient(tmdbToken) {
+  MovieInfoStore({this.prefs, TmdbClient? client, this.pinned = tmdbIds}) : client = client ?? TmdbClient(tmdbToken) {
     _load();
   }
 
   final SharedPreferences? prefs;
   final TmdbClient client;
+
+  /// Scene film id → TMDB id, used instead of a title search when present.
+  final Map<String, int> pinned;
   static const _key = 'scene.tmdb.v1';
 
   /// Film id → info, or null when TMDB has no confident match.
@@ -61,7 +64,7 @@ class MovieInfoStore extends ChangeNotifier {
     notifyListeners();
     try {
       for (final f in missing) {
-        final id = tmdbIds[f.id] ?? await client.findId(f.title, f.year);
+        final id = pinned[f.id] ?? await client.findId(f.title, f.year);
         final info = id == null ? null : await client.details(id);
         _info[f.id] = info;
         if (info?.runtimeMinutes != null && (info!.runtimeMinutes! - f.runtimeMinutes).abs() > 5) {
