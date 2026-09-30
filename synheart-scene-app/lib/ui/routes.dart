@@ -6,6 +6,7 @@ import 'current_state_screen.dart';
 import 'dna_screen.dart';
 import 'edit_profile_screen.dart';
 import 'profile_screen.dart';
+import 'search_screen.dart';
 import 'settings_screen.dart';
 import 'tonight_screen.dart';
 import 'welcome_screen.dart';
@@ -23,6 +24,7 @@ abstract final class Routes {
   static const state = '/state';
   static const tonight = '/tonight';
   static const compare = '/compare';
+  static const search = '/search';
   static String why(String filmId) => '/why/$filmId';
 }
 
@@ -37,6 +39,7 @@ GoRouter buildRouter() => GoRouter(
         GoRoute(path: Routes.settings, builder: (_, st) => SettingsScreen(pendingLink: st.extra as Uri?)),
         GoRoute(path: Routes.tonight, builder: (_, _) => const TonightScreen()),
         GoRoute(path: Routes.compare, builder: (_, _) => const CompareScreen()),
+        GoRoute(path: Routes.search, builder: (_, _) => const SearchScreen()),
         GoRoute(path: '/why/:id', builder: (_, st) => WhyScreen(filmId: st.pathParameters['id']!)),
       ],
     );

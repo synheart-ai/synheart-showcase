@@ -76,6 +76,8 @@ flutter:
     - assets/tmdb_logo.png
     # The app's wordmark ("Cinema by synheart", v02), for the Welcome screen.
     - assets/scene_logo.png
+    - assets/scene_logo_light.png
+    - assets/scene_mark.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -50,7 +50,7 @@ class WelcomeScreen extends StatelessWidget {
           // The wordmark; its semantics label keeps the app's name for screen readers.
           Align(
             alignment: Alignment.centerLeft,
-            child: Image.asset('assets/scene_logo.png', height: 72, semanticLabel: 'Scene by Synheart'),
+            child: Image.asset('assets/scene_logo_light.png', height: 72, semanticLabel: 'Scene by Synheart'),
           ),
           const SizedBox(height: 8),
           Container(height: 2, width: 64, color: SceneColors.accent),

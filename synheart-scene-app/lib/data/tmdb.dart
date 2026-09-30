@@ -37,6 +37,7 @@ class MovieInfo {
   final String? trailerYouTubeKey;
 
   String? posterUrl({String size = 'w342'}) => posterPath == null ? null : 'https://image.tmdb.org/t/p/$size$posterPath';
+  String? backdropUrl({String size = 'w780'}) => backdropPath == null ? null : 'https://image.tmdb.org/t/p/$size$backdropPath';
 
   Uri? get trailerUrl => trailerYouTubeKey == null ? null : Uri.https('www.youtube.com', '/watch', {'v': trailerYouTubeKey});
 

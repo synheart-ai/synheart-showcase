@@ -140,7 +140,7 @@ class _GenreBar extends StatelessWidget {
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(value: value, minHeight: 10, backgroundColor: SceneColors.panel, color: SceneColors.ink),
+            child: LinearProgressIndicator(value: value, minHeight: 10, backgroundColor: SceneColors.panel, color: SceneColors.red),
           ),
         ],
       ),

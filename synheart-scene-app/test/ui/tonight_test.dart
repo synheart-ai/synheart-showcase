@@ -43,6 +43,8 @@ void main() {
     await tester.tap(pickCard('Knives Out'));
     await tester.pumpAndSettle();
     expect(find.text('Why this movie?'), findsOneWidget);
+    // The title page (backdrop, title, trailer) comes first; scroll to the reasons.
+    await tester.scrollUntilVisible(find.text('Right now'), 200, scrollable: find.byType(Scrollable).last);
     expect(find.text('Your taste'), findsOneWidget);
     expect(find.text('Right now'), findsOneWidget);
     expect(find.textContaining('The demo data suggests this may be'), findsOneWidget);
@@ -117,6 +119,7 @@ void main() {
     await tester.tap(find.text('#1 TONIGHT'));
     await tester.pumpAndSettle();
     expect(find.text('Why this movie?'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('You chose "Help me unwind".'), 200, scrollable: find.byType(Scrollable).last);
     expect(find.text('You chose "Help me unwind".'), findsOneWidget);
     expect(find.textContaining('Ranked on taste (70%) and your choice of evening (30%)'), findsOneWidget);
   });

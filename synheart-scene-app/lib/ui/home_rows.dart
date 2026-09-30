@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app/demo_log.dart';
+import '../app/movie_info_store.dart';
 import '../app/scene_cubit.dart';
 import '../domain/film.dart';
 import '../engine/collections.dart';
@@ -16,7 +19,8 @@ void _open(BuildContext context, Film f, String from, {int? rank}) {
   context.push(Routes.why(f.id));
 }
 
-/// The top pick, large — the first thing on the home screen.
+/// The top pick as a cinema-app hero: full-bleed poster art, the title, a
+/// tag line and the two actions — trailer and *Why this movie?*.
 class HeroPick extends StatelessWidget {
   const HeroPick({super.key, required this.recommendation, required this.headline});
 
@@ -27,53 +31,83 @@ class HeroPick extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final f = recommendation.film;
+    final trailer = context.watch<MovieInfoStore>()[f.id]?.trailerUrl;
+    final tags = ['Movie', ...f.genres.take(2).map((g) => g.label), '${f.runtimeMinutes} min'];
     return Card(
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: SceneColors.line)),
       child: InkWell(
         onTap: () => _open(context, f, 'hero', rank: 1),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: LayoutBuilder(builder: (context, c) {
+          final w = c.maxWidth;
+          return Stack(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Poster(f, width: 118, height: 170),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('#1 TONIGHT', style: t.labelSmall),
-                        const SizedBox(height: 4),
-                        Text(f.title, style: t.headlineSmall),
-                        const SizedBox(height: 4),
-                        Text('${f.year} · ${f.runtimeMinutes} min', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                        Text(f.genres.take(2).map((g) => g.label).join(' · '), style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                        const SizedBox(height: 8),
-                        Text(recommendation.fitLabel,
-                            style: t.bodyMedium?.copyWith(color: SceneColors.accent, fontWeight: FontWeight.w600)),
-                      ],
+              Poster(f, width: w, height: w * 1.32, radius: 0),
+              // Darken the lower half so the title and actions read on any art.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.35, 0.72, 1],
+                      colors: [Colors.transparent, SceneColors.paper.withValues(alpha: 0.82), SceneColors.paper],
                     ),
                   ),
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(headline, style: t.bodyLarge),
-              const SizedBox(height: 8),
-              Text(f.logline, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-              const SizedBox(height: 12),
-              Text('Why this movie? →', style: t.bodyMedium?.copyWith(color: SceneColors.ink, fontWeight: FontWeight.w600)),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 16,
+                child: Column(
+                  children: [
+                    Text('#1 TONIGHT', style: t.labelSmall?.copyWith(color: SceneColors.accent)),
+                    const SizedBox(height: 6),
+                    Text(f.title, textAlign: TextAlign.center, style: t.displaySmall),
+                    const SizedBox(height: 8),
+                    Text(tags.join('  •  '), textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: SceneColors.body)),
+                    const SizedBox(height: 4),
+                    Text(recommendation.fitLabel, style: t.bodyMedium?.copyWith(color: SceneColors.accent, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      if (trailer != null) ...[
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': f.id, 'from': 'hero-trailer'});
+                              launchUrl(trailer, mode: LaunchMode.externalApplication);
+                            },
+                            icon: const Icon(Icons.play_arrow_rounded, size: 28),
+                            label: const Text('Trailer'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(backgroundColor: SceneColors.panel.withValues(alpha: 0.92)),
+                          onPressed: () => _open(context, f, 'hero', rank: 1),
+                          icon: const Icon(Icons.info_outline),
+                          label: const Text('Why this pick'),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    Text(headline, textAlign: TextAlign.center, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+                  ],
+                ),
+              ),
             ],
-          ),
-        ),
+          );
+        }),
       ),
     );
   }
 }
 
-/// Tonight's ranked list as a row, with the rank on each tile.
+/// Tonight's ranked list as a "top" row: a large rank numeral beside each
+/// poster, with the title and fit underneath.
 class TopRow extends StatelessWidget {
   const TopRow({super.key, required this.picks});
 
@@ -82,34 +116,38 @@ class TopRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    // Not a fixed-height ListView: five tiles, sized to their text, so a
-    // two-line title or large text never overflows.
+    // Not a fixed-height ListView: tiles sized to their text, so a two-line
+    // title or large text never overflows.
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final (i, r) in picks.indexed) ...[
-            if (i > 0) const SizedBox(width: 10),
+            if (i > 0) const SizedBox(width: 8),
             SizedBox(
-              width: 124,
+              width: 168,
               child: Card(
-                margin: EdgeInsets.zero,
+                color: SceneColors.paper,
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => _open(context, r.film, 'top', rank: i + 1),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Poster(r.film, width: 108, height: 150),
-                        const SizedBox(height: 6),
-                        Text('#${i + 1}', style: t.labelSmall),
-                        Text(r.film.title, style: t.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
-                        Text(r.fit.label, style: t.bodySmall?.copyWith(color: SceneColors.accent)),
-                      ],
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                        SizedBox(width: 58, child: _RankNumeral(i + 1)),
+                        Poster(r.film, width: 110, height: 160),
+                      ]),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(58, 6, 4, 6),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('#${i + 1}', style: t.labelSmall?.copyWith(color: SceneColors.accent)),
+                          Text(r.film.title, style: t.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text(r.fit.label, style: t.bodySmall),
+                        ]),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -119,6 +157,32 @@ class TopRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The big outlined rank beside a top-row poster; decorative (the "#n"
+/// label under it is what screen readers read).
+class _RankNumeral extends StatelessWidget {
+  const _RankNumeral(this.rank);
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.bottomRight,
+          child: Text('$rank',
+                style: TextStyle(
+                  fontSize: 104,
+                  height: 0.9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -6,
+                  foreground: Paint()
+                    ..style = PaintingStyle.stroke
+                    ..strokeWidth = 3
+                    ..color = SceneColors.sage,
+                )),
+        ),
+      );
 }
 
 /// A titled row of posters.
@@ -139,25 +203,25 @@ class PosterRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 22),
+        const SizedBox(height: 26),
         Text(title, style: t.titleLarge),
         if (subtitle != null) Text(subtitle!, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
         const SizedBox(height: 10),
         SizedBox(
-          height: 128,
+          height: 168,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: films.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               final f = films[i];
               return Semantics(
                 button: true,
                 label: '${f.title}, ${f.year}. Why this movie?',
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(6),
                   onTap: () => _open(context, f, from),
-                  child: Poster(f, width: 88, height: 128),
+                  child: Poster(f, width: 116, height: 168),
                 ),
               );
             },

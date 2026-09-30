@@ -42,7 +42,7 @@ void main() {
     expect(find.text('Your Movie DNA'), findsOneWidget);
     await tester.pageBack(); // → Welcome
     await tester.pumpAndSettle();
-    expect(find.image(const AssetImage('assets/scene_logo.png')), findsOneWidget); // the wordmark
+    expect(find.image(const AssetImage('assets/scene_logo_light.png')), findsOneWidget); // the wordmark
   });
 
   testWidgets('Welcome, Tonight, the state sheet, Settings and demo picks meet the tap-target, label and contrast guidelines',

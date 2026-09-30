@@ -110,7 +110,7 @@ class _RateFilm extends StatelessWidget {
         const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(value: index / total, minHeight: 4, backgroundColor: SceneColors.line, color: SceneColors.ink),
+          child: LinearProgressIndicator(value: index / total, minHeight: 4, backgroundColor: SceneColors.line, color: SceneColors.red),
         ),
         const SizedBox(height: 28),
         Center(child: Poster(film, width: 180, height: 260)),

@@ -11,11 +11,12 @@ import 'theme.dart';
 /// loads and the fallback offline or on error, so the demo never shows an
 /// empty tile. Images are cached on disk after the first load.
 class Poster extends StatelessWidget {
-  const Poster(this.film, {super.key, this.width = 72, this.height = 104});
+  const Poster(this.film, {super.key, this.width = 72, this.height = 104, this.radius = 6});
 
   final Film film;
   final double width;
   final double height;
+  final double radius;
 
   static Color colorFor(Tone t) => switch (t) {
         Tone.playful => const Color(0xFFC9803D),
@@ -33,7 +34,7 @@ class Poster extends StatelessWidget {
     if (url == null) return fallback;
     return ExcludeSemantics(
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(radius),
         child: CachedNetworkImage(
           imageUrl: url,
           width: width,
@@ -57,15 +58,15 @@ class Poster extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c, Color.lerp(c, SceneColors.ink, 0.55)!]),
+        borderRadius: BorderRadius.circular(radius),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c, Color.lerp(c, SceneColors.paper, 0.6)!]),
       ),
       alignment: Alignment.bottomLeft,
       child: Text(
         film.title,
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontFamily: 'Georgia', color: Colors.white, fontSize: width / 6.5, height: 1.1, fontWeight: FontWeight.w600),
+        style: TextStyle(color: Colors.white, fontSize: width / 6.5, height: 1.05, fontWeight: FontWeight.w800),
       ),
       ),
     );

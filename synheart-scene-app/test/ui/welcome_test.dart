@@ -7,7 +7,7 @@ void main() {
   testWidgets('welcome shows the promise and both ways in', (tester) async {
     await tester.pumpWidget(SceneApp(signals: FakeSignals()));
     await tester.pumpAndSettle();
-    expect(find.image(const AssetImage('assets/scene_logo.png')), findsOneWidget); // the wordmark
+    expect(find.image(const AssetImage('assets/scene_logo_light.png')), findsOneWidget); // the wordmark
     expect(find.text('Taste tells us what you like.'), findsOneWidget);
     expect(find.text('Build my movie profile'), findsOneWidget);
     expect(find.text('Try the demo profile'), findsOneWidget);

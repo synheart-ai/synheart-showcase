@@ -13,6 +13,7 @@ import 'routes.dart';
 import 'state_sheet.dart';
 import 'theme.dart';
 import 'tonight_extras.dart';
+import 'nav_bar.dart';
 import 'widgets.dart';
 
 /// The home screen — Tonight's Picks as a browse home (a state-aware
@@ -66,36 +67,39 @@ class TonightScreen extends StatelessWidget {
       event: DemoEvent.recommendationsViewed,
       fields: {'mode': picks.mode.name, 'stale': '${picks.isStale}'},
       child: Scaffold(
-        // No title: at 390 pt the back arrow, Movie DNA, Settings and the state
-        // pill leave a title no room (it was squeezed to 30 pt, 1:1 contrast).
-        // The page itself starts with "#1 TONIGHT".
+        // The logo mark in place of a long title: at 390 pt the back arrow,
+        // Settings and the state pill leave little room (a title was once
+        // squeezed to 30 pt, 1:1 contrast). Movie DNA is in the bottom bar.
         appBar: AppBar(
-          actions: [
-            IconButton(tooltip: 'Movie DNA', icon: const Icon(Icons.person_outline), onPressed: () => context.push(Routes.dna)),
-            const SettingsButton(),
-            const Padding(padding: EdgeInsets.only(right: 12), child: StatePill()),
+          titleSpacing: 0,
+          title: Row(children: [
+            Image.asset('assets/scene_mark.png', height: 34, semanticLabel: 'Scene'),
+            const SizedBox(width: 12),
+            const Flexible(child: Text('Tonight', maxLines: 1, overflow: TextOverflow.ellipsis)),
+          ]),
+          actions: const [
+            SettingsButton(),
+            Padding(padding: EdgeInsets.only(right: 12), child: StatePill()),
           ],
         ),
+        extendBody: true,
+        bottomNavigationBar: const SceneNavBar(current: SceneTab.home),
         body: PageBody(
           bottom: !picks.hasUsableState
               ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Do a Synheart check-in'))
               : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
           children: [
-            SegmentedButton<RecommendationMode>(
-              showSelectedIcon: false,
-              // Disabled text stays at 4.5:1 (sage), so it is still readable.
-              style: ButtonStyle(
-                foregroundColor: WidgetStateProperty.resolveWith((st) => st.contains(WidgetState.disabled) ? SceneColors.sage : null),
+            // The key demo toggle, as the chip row under a cinema app's header.
+            // Only the state chip is disabled without a usable reading; its
+            // text stays at 4.5:1 or better.
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _ModeChip(label: 'BASED ON TASTE', selected: picks.mode == RecommendationMode.tasteOnly, onTap: () => cubit.setMode(RecommendationMode.tasteOnly)),
+              _ModeChip(
+                label: 'TASTE + CURRENT STATE',
+                selected: picks.mode == RecommendationMode.tastePlusState,
+                onTap: picks.hasUsableState ? () => cubit.setMode(RecommendationMode.tastePlusState) : null,
               ),
-              segments: [
-                const ButtonSegment(value: RecommendationMode.tasteOnly, label: Text('BASED ON TASTE')),
-                ButtonSegment(value: RecommendationMode.tastePlusState, label: const Text('TASTE + CURRENT STATE'), enabled: picks.hasUsableState),
-              ],
-              selected: {picks.mode},
-              // Only the state segment is disabled without a usable reading, so
-              // the active one keeps full contrast.
-              onSelectionChanged: (m) => cubit.setMode(m.first),
-            ),
+            ]),
             const SizedBox(height: 14),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -134,4 +138,25 @@ class TonightScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        showCheckmark: false,
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: onTap == null ? SceneColors.sage : (selected ? SceneColors.paper : SceneColors.ink),
+        ),
+        shape: const StadiumBorder(side: BorderSide(color: Color(0xFF808080))),
+        onSelected: onTap == null ? null : (_) => onTap!(),
+      );
 }

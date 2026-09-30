@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import '../app/movie_info_store.dart';
 import '../app/scene_cubit.dart';
 import '../engine/explain.dart';
 import '../engine/recommender.dart';
+import 'home_rows.dart';
 import 'picks.dart';
 import 'poster.dart';
 import 'routes.dart';
@@ -46,27 +48,7 @@ class WhyScreen extends StatelessWidget {
         appBar: AppBar(title: const Text('Why this movie?')),
         body: PageBody(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Poster(f, width: 96, height: 138),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(f.title, style: t.headlineSmall),
-                      const SizedBox(height: 4),
-                      Text('${f.year} · ${f.runtimeMinutes} min', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                      const SizedBox(height: 4),
-                      Text(f.genres.map((g) => g.label).join(' · '), style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                      const SizedBox(height: 10),
-                      Text(f.logline, style: t.bodyMedium),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            _DetailHeader(recommendation: r),
             const SizedBox(height: 20),
             _Synopsis(filmId: f.id),
             Callout(title: r.fitLabel.toUpperCase(), child: Text(e.headline)),
@@ -107,6 +89,14 @@ class WhyScreen extends StatelessWidget {
             if (w.usesContext) _Factor(label: 'Your choices for tonight', weight: w.context, value: r.context),
             const SizedBox(height: 28),
             FeedbackPanel(filmId: f.id),
+            PosterRow(
+              title: 'More like this',
+              from: 'more-like-this',
+              films: [
+                for (final other in picks.list(limit: 1000))
+                  if (other.film.id != f.id && other.film.genres.any(f.genres.contains)) other.film,
+              ].take(10).toList(),
+            ),
           ],
         ),
       ),
@@ -165,7 +155,7 @@ class _Factor extends StatelessWidget {
         // A bar with no number: the RFC keeps percentages for the weights only.
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(value: value, minHeight: 8, backgroundColor: SceneColors.panel, color: SceneColors.ink),
+          child: LinearProgressIndicator(value: value, minHeight: 8, backgroundColor: SceneColors.panel, color: SceneColors.red),
         ),
       ]),
     );
@@ -189,25 +179,63 @@ class _Synopsis extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (info.overview != null) ...[
-            Text('Synopsis', style: t.titleMedium),
-            const SizedBox(height: 4),
-            Text(info.overview!, style: t.bodyLarge),
-            const SizedBox(height: 10),
-          ],
           if (trailer != null)
-            OutlinedButton.icon(
+            FilledButton.icon(
               onPressed: () {
                 context.read<SceneCubit>().log.record(DemoEvent.filmSelected, {'film': filmId, 'from': 'trailer'});
                 launchUrl(trailer, mode: LaunchMode.externalApplication);
               },
-              icon: const Icon(Icons.play_arrow),
+              icon: const Icon(Icons.play_arrow_rounded, size: 28),
               label: const Text('Watch trailer'),
             ),
-          const SizedBox(height: 6),
+          if (info.overview != null) ...[
+            const SizedBox(height: 14),
+            Text(info.overview!, style: t.bodyLarge),
+          ],
+          const SizedBox(height: 10),
           const TmdbCredit(lead: 'Film data from TMDB.'),
         ],
       ),
     );
+  }
+}
+
+/// The title page's top: backdrop art (the poster when TMDB has none), the
+/// rank label in red, a bold title and a meta line.
+class _DetailHeader extends StatelessWidget {
+  const _DetailHeader({required this.recommendation});
+  final Recommendation recommendation;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final f = recommendation.film;
+    final backdrop = context.watch<MovieInfoStore>()[f.id]?.backdropUrl();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: backdrop == null
+              ? FittedBox(fit: BoxFit.cover, clipBehavior: Clip.hardEdge, child: Poster(f, width: 320, height: 460, radius: 0))
+              : ExcludeSemantics(
+                  child: CachedNetworkImage(
+                    imageUrl: backdrop,
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) => const ColoredBox(color: SceneColors.panel),
+                    errorWidget: (_, _, _) => FittedBox(fit: BoxFit.cover, clipBehavior: Clip.hardEdge, child: Poster(f, width: 320, height: 460, radius: 0)),
+                  ),
+                ),
+        ),
+      ),
+      const SizedBox(height: 14),
+      Text(recommendation.fitLabel.toUpperCase(), style: t.labelSmall?.copyWith(color: SceneColors.accent)),
+      const SizedBox(height: 4),
+      Text(f.title, style: t.displaySmall),
+      const SizedBox(height: 6),
+      Text('${f.year}  ·  ${f.runtimeMinutes} min  ·  ${f.genres.map((g) => g.label).join(', ')}', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+      const SizedBox(height: 8),
+      Text(f.logline, style: t.bodyLarge),
+    ]);
   }
 }
