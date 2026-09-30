@@ -70,10 +70,13 @@ class CheckInDiagnostics {
         'Needed: more than ${AxisReading.minConfidence.toStringAsFixed(2)} on at least one axis',
       ];
 
+  /// `✓` drives the picks, `·` is shown only (a behavior axis under 0.45),
+  /// nothing is not available (gate, floor or no score).
   static String describeReading(CurrentState r) => [
         for (final a in HsiAxis.values)
           if (r.reading(a) case final v?)
-            '${a.name} ${v.value.toStringAsFixed(2)}@${v.confidence.toStringAsFixed(2)}${v.isAvailable ? '✓' : ''}',
+            '${a.name} ${v.value.toStringAsFixed(2)}@${v.confidence.toStringAsFixed(2)}'
+                '${r.valueOf(a) == null ? '' : (r.drivers.valueOf(a) == null ? '·' : '✓')}',
       ].join(' ');
 
   static void log(String message) {
