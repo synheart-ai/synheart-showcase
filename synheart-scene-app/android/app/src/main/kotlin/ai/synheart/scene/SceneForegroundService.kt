@@ -28,6 +28,7 @@ class SceneForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            running = false
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
@@ -37,41 +38,26 @@ class SceneForegroundService : Service() {
         } else {
             0
         }
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(), type)
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(this), type)
+        running = true
         return START_STICKY
     }
 
-    private fun notification(): Notification {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Current state", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Shown while Scene reads your current state in the background."
-                },
-            )
-        }
-        val open = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Scene is reading your current state")
-            .setContentText("Heart rate and how you use your phone, never content. Stop it in Scene's Settings.")
-            // The logo's play-button "i" as a white silhouette; tinted with its red.
-            .setSmallIcon(R.drawable.ic_stat_scene)
-            .setColor(0xFFDC1929.toInt())
-            .setOngoing(true)
-            .setContentIntent(open)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+    override fun onDestroy() {
+        running = false
+        super.onDestroy()
     }
 
     companion object {
         private const val CHANNEL_ID = "scene_state"
         private const val NOTIFICATION_ID = 7301
         private const val ACTION_STOP = "ai.synheart.scene.STOP_STATE"
+        private const val NORMAL_TEXT = "Heart rate and how you use your phone, never content. Stop it in Scene's Settings."
+
+        @Volatile private var running = false
+
+        /** A problem to show instead of the normal line (e.g. the watch went quiet); null clears it. */
+        @Volatile private var problem: String? = null
 
         fun start(context: Context) {
             val intent = Intent(context, SceneForegroundService::class.java)
@@ -79,7 +65,44 @@ class SceneForegroundService : Service() {
         }
 
         fun stop(context: Context) {
+            problem = null
             context.startService(Intent(context, SceneForegroundService::class.java).setAction(ACTION_STOP))
+        }
+
+        fun setProblem(context: Context, text: String?) {
+            if (problem == text) return
+            problem = text
+            if (!running) return
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.notify(NOTIFICATION_ID, notification(context))
+        }
+
+        private fun notification(context: Context): Notification {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                manager.createNotificationChannel(
+                    NotificationChannel(CHANNEL_ID, "Current state", NotificationManager.IMPORTANCE_LOW).apply {
+                        description = "Shown while Scene reads your current state in the background."
+                    },
+                )
+            }
+            val open = PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+            return NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Scene is reading your current state")
+                .setContentText(problem ?: NORMAL_TEXT)
+                .setOnlyAlertOnce(true)
+                // The logo's play-button "i" as a white silhouette; tinted with its red.
+                .setSmallIcon(R.drawable.ic_stat_scene)
+                .setColor(0xFFDC1929.toInt())
+                .setOngoing(true)
+                .setContentIntent(open)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .build()
         }
     }
 }

@@ -70,6 +70,11 @@ class FakeSignals implements SignalBackend {
   @override
   Future<void> requestBehaviorPermissions() async => calls.add('permissions');
 
+  String? backgroundProblem;
+
+  @override
+  Future<void> setBackgroundStatus(String? problem) async => backgroundProblem = problem;
+
   @override
   Future<bool> notificationAccessGranted() async => notificationAccess;
 

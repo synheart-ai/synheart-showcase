@@ -129,9 +129,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (connected) ...[
         const SizedBox(height: 4),
         Text(
-          engine.isLive
-              ? 'Signal arriving${engine.heartRate == null ? '' : ' · ${engine.heartRate!.round()} BPM'}'
-              : 'Waiting for a signal…',
+          engine.sourceStalled
+              ? 'No heart rate for a minute — reconnecting…'
+              : engine.isLive
+                  ? 'Signal arriving${engine.heartRate == null ? '' : ' · ${engine.heartRate!.round()} BPM'}'
+                  : 'Waiting for a signal…',
           style: t.bodyMedium?.copyWith(color: SceneColors.sage),
         ),
         const SizedBox(height: 10),

@@ -104,6 +104,92 @@ void main() {
       });
     });
 
+    group('watchdog: a quiet streaming source is reconnected', () {
+      // Moves the engine clock with the fake timers.
+      void advance(FakeAsync async, Duration d) {
+        for (var t = Duration.zero; t < d; t += const Duration(seconds: 5)) {
+          now = now.add(const Duration(seconds: 5));
+          async.elapse(const Duration(seconds: 5));
+        }
+      }
+
+      int watchConnects() => fake.calls.where((c) => c == 'watch').length;
+
+      test('no heart rate for a minute reconnects the watch, and again each minute', () {
+        fakeAsync((async) {
+          engine.consent();
+          async.flushMicrotasks();
+          engine.connectWatch();
+          async.flushMicrotasks();
+          expect(watchConnects(), 1);
+
+          fake.heartRateCtl.add(72);
+          advance(async, const Duration(seconds: 55));
+          expect(watchConnects(), 1, reason: 'quiet for under a minute');
+          expect(engine.sourceStalled, isFalse);
+
+          advance(async, const Duration(seconds: 20));
+          expect(watchConnects(), 2);
+          expect(engine.sourceStalled, isTrue);
+          expect(engine.restarts, 1);
+          expect(fake.backgroundProblem, contains('reconnecting'));
+
+          advance(async, const Duration(seconds: 30));
+          expect(watchConnects(), 2, reason: 'waits a minute between restarts');
+          advance(async, const Duration(seconds: 35));
+          expect(watchConnects(), 3);
+
+          fake.heartRateCtl.add(74);
+          expect(engine.sourceStalled, isFalse);
+          expect(fake.backgroundProblem, isNull);
+          advance(async, const Duration(seconds: 50));
+          expect(watchConnects(), 3);
+          engine.dispose();
+        });
+      });
+
+      test('a steady watch is left alone', () {
+        fakeAsync((async) {
+          engine.consent();
+          async.flushMicrotasks();
+          engine.connectWatch();
+          async.flushMicrotasks();
+          for (var i = 0; i < 60; i++) {
+            fake.heartRateCtl.add(70);
+            advance(async, const Duration(seconds: 5));
+          }
+          expect(watchConnects(), 1);
+          expect(engine.restarts, 0);
+          engine.dispose();
+        });
+      });
+
+      test('Health Connect is never reconnected (batches, and a 7-day read)', () {
+        fakeAsync((async) {
+          engine.consent();
+          async.flushMicrotasks();
+          engine.connectPlatformHealth();
+          async.flushMicrotasks();
+          advance(async, const Duration(minutes: 5));
+          expect(fake.calls.where((c) => c == 'health').length, 1);
+          engine.dispose();
+        });
+      });
+
+      test('withdrawing consent stops the watchdog', () {
+        fakeAsync((async) {
+          engine.consent();
+          async.flushMicrotasks();
+          engine.connectWatch();
+          async.flushMicrotasks();
+          engine.withdraw();
+          async.flushMicrotasks();
+          advance(async, const Duration(minutes: 3));
+          expect(watchConnects(), 1);
+        });
+      });
+    });
+
     group('diagnostics explain "not enough signal"', () {
       void timeOut(FakeAsync async, void Function() during) {
         engine.startCheckIn();

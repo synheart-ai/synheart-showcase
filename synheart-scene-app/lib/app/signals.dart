@@ -66,6 +66,10 @@ abstract class SignalBackend {
   /// notification (Android 13+) and phone state for call events.
   Future<void> requestBehaviorPermissions();
 
+  /// The ongoing notification's line: a problem (e.g. the watch went quiet),
+  /// or null for the normal text.
+  Future<void> setBackgroundStatus(String? problem);
+
   /// Notification access (system Settings) for notification events.
   Future<bool> notificationAccessGranted();
   Future<void> openNotificationAccess();
@@ -323,6 +327,12 @@ class SynheartSignals implements SignalBackend {
   Future<void> setBackground(bool on) async {
     if (!Platform.isAndroid) return; // iOS: foreground only for now.
     await _background.invokeMethod<bool>(on ? 'start' : 'stop');
+  }
+
+  @override
+  Future<void> setBackgroundStatus(String? problem) async {
+    if (!Platform.isAndroid) return;
+    await _background.invokeMethod<bool>('status', problem);
   }
 
   @override

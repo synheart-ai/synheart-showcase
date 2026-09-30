@@ -146,6 +146,15 @@ process alive, and the Flutter engine is created once in `SceneApplication` and
 cached, so it outlives the activity. Without that, native collectors keep
 sending to a detached engine and the events are lost. **iOS is foreground only** for now.
 
+**Watchdog.** The Galaxy Watch and a Bluetooth strap stream continuously, so if
+no heart rate arrives for 60 s (`SceneStateEngine.stalledAfter`) Scene
+reconnects the source — for the watch that re-sends its start command — and
+retries every 60 s while it stays quiet. Settings and the ongoing notification
+say *reconnecting*, and `[scene-signal] source quiet …` is logged. Health
+Connect is left alone: it delivers in batches, and reconnecting repeats its
+7-day read. (The watch stream stopped for about two minutes on 2026-09-30 on
+the SM-A235F and came back on its own.)
+
 Every Synheart reading with evidence updates the state and the picks live; a
 check-in just waits for the next one. This reverses the earlier check-in-only
 rule and **RFC §5's "no passive background collection without a separate

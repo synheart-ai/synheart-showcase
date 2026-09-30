@@ -29,6 +29,10 @@ object BackgroundChannel {
                     SceneForegroundService.stop(app)
                     result.success(true)
                 }
+                "status" -> {
+                    SceneForegroundService.setProblem(app, call.arguments as String?)
+                    result.success(true)
+                }
                 "notificationAccessGranted" ->
                     result.success(NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName))
                 "openNotificationAccess" -> {

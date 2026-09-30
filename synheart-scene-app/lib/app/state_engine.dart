@@ -77,6 +77,14 @@ class SceneStateEngine extends ChangeNotifier {
   /// A source counts as live while samples arrived this recently (Resona: 45 s).
   static const liveWithin = Duration(seconds: 45);
 
+  /// Continuous collection: with no heart rate for this long, a streaming
+  /// source (the Galaxy Watch, a Bluetooth strap) is reconnected — for the
+  /// watch that re-sends its start command — and again every [stalledAfter]
+  /// while it stays quiet. Health Connect and WearSim are left alone: Health
+  /// Connect delivers in batches, and reconnecting it repeats its 7-day read.
+  static const stalledAfter = Duration(seconds: 60);
+  static const _watchdogEvery = Duration(seconds: 15);
+
   bool _consented = false;
   bool _starting = false;
   WearableSource _source = WearableSource.none;
@@ -96,6 +104,11 @@ class SceneStateEngine extends ChangeNotifier {
   CurrentState? _checkInResult;
   Timer? _checkInTimer;
   Timer? _diagTimer;
+  Timer? _watchdog;
+  DateTime? _connectedAt;
+  DateTime? _lastRestartAt;
+  bool _stalled = false;
+  int _restarts = 0;
   CheckInDiagnostics? _diag;
 
   bool get consented => _consented;
@@ -118,6 +131,12 @@ class SceneStateEngine extends ChangeNotifier {
   bool get checkInRunning => _checkIn == CheckInPhase.connecting || _checkIn == CheckInPhase.reading;
 
   bool get isLive => _lastSampleAt != null && _clock().difference(_lastSampleAt!) < liveWithin;
+
+  /// The streaming source went quiet and is being reconnected.
+  bool get sourceStalled => _stalled;
+
+  /// How many times the watchdog reconnected the source (diagnostics).
+  int get restarts => _restarts;
 
   Experience? get experience => _published?.suggestedExperience;
 
@@ -152,6 +171,9 @@ class SceneStateEngine extends ChangeNotifier {
   /// Withdraw consent: disconnect and stop the runtime. The last published
   /// reading stays in the cubit until it goes stale or the demo is reset.
   Future<void> withdraw() async {
+    _watchdog?.cancel();
+    _watchdog = null;
+    _stalled = false;
     try {
       await backend.setBackground(false);
     } catch (_) {}
@@ -283,8 +305,33 @@ class SceneStateEngine extends ChangeNotifier {
       await connect();
       _source = source;
       _sourceName = name ?? source.label;
+      _connectedAt = _clock();
     });
     if (source != WearableSource.watch) _chosen = (source: source, name: name, connect: connect);
+    if (source == WearableSource.watch || source == WearableSource.bluetooth) {
+      _watchdog ??= Timer.periodic(_watchdogEvery, (_) => _checkSource());
+    }
+  }
+
+  /// The watchdog: reconnects a quiet streaming source (see [stalledAfter]).
+  void _checkSource() {
+    final chosen = _chosen;
+    if (!_consented || chosen == null || _starting || _presenting) return;
+    if (chosen.source != WearableSource.watch && chosen.source != WearableSource.bluetooth) return;
+    final now = _clock();
+    final since = [_lastSampleAt, _connectedAt, _lastRestartAt]
+        .whereType<DateTime>()
+        .fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
+    if (since == null || now.difference(since) < stalledAfter) return;
+    _lastRestartAt = now;
+    _restarts++;
+    _stalled = true;
+    CheckInDiagnostics.log('source quiet for ${now.difference(since).inSeconds}s · reconnecting ${chosen.name ?? chosen.source.label} (restart #$_restarts)');
+    backend.setBackgroundStatus('No heart rate from ${chosen.name ?? chosen.source.label} — reconnecting…').catchError((_) {});
+    notifyListeners();
+    _connect(chosen.source, chosen.connect, name: chosen.name).catchError((Object e) {
+      CheckInDiagnostics.log('reconnect failed: ${_describe(e)}');
+    });
   }
 
   Future<void> _guard(Future<void> Function() body) async {
@@ -317,6 +364,11 @@ class SceneStateEngine extends ChangeNotifier {
   void _onHeartRate(double bpm) {
     _heartRate = bpm;
     _lastSampleAt = _clock();
+    if (_stalled) {
+      _stalled = false;
+      CheckInDiagnostics.log('heart rate back after restart #$_restarts');
+      backend.setBackgroundStatus(null).catchError((_) {});
+    }
     if (_checkIn == CheckInPhase.reading) _diag?.onHeartRate(_lastSampleAt!);
     notifyListeners();
   }
@@ -402,6 +454,7 @@ class SceneStateEngine extends ChangeNotifier {
     _disposed = true;
     _checkInTimer?.cancel();
     _diagTimer?.cancel();
+    _watchdog?.cancel();
     for (final s in _subs) {
       s.cancel();
     }
