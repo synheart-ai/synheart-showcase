@@ -63,7 +63,9 @@ enum HsiAxis {
   stress('Stress', 'stress'),
   arousal('Arousal', 'arousal'),
   capacity('Capacity', 'capacity'),
-  cognitiveLoad('Cognitive load', 'cognitive_load'),
+  // Runtime 0.32.0 labels cognitive_load lower_is_more (seen on device,
+  // 2026-09-30): a low score means MORE load.
+  cognitiveLoad('Cognitive load', 'cognitive_load', HsiDirection.lowerIsMore),
   mentalFatigue('Mental fatigue', 'mental_fatigue'),
   valence('Valence', 'valence'),
   sleep('Sleep', 'sleep_score'),
@@ -269,6 +271,21 @@ class CurrentState extends Equatable {
 
   HsiDirection directionOf(HsiAxis a) => directions[a] ?? a.direction;
 
+  /// How much of the named thing there is (0–1), by the axis's direction:
+  /// the score for higher-is-more, 1 − score for lower-is-more. Null when
+  /// unavailable, or when the axis is bidirectional and its ends are not
+  /// known — except valence, whose score reads negative → positive by
+  /// definition. Every mapping below goes through this, never the raw score.
+  double? amountOf(HsiAxis a) {
+    final v = valueOf(a);
+    if (v == null) return null;
+    return switch (directionOf(a)) {
+      HsiDirection.higherIsMore => v,
+      HsiDirection.lowerIsMore => 1 - v,
+      HsiDirection.bidirectional => a == HsiAxis.valence ? v : null,
+    };
+  }
+
   /// The runtime's guess at the current activity (`meta.synheart.context`),
   /// shown only under Details and never ranked on: it describes app use.
   final String? contextLabel;
@@ -302,6 +319,7 @@ class CurrentState extends Equatable {
     if (valueOf(a) != null) return null;
     final code = withheld[a];
     if (code != null) return withheldReason(code);
+    if (isFloor(a)) return 'too early to tell';
     final r = reading(a);
     return r != null ? 'Synheart is not confident enough yet' : null;
   }
@@ -327,7 +345,18 @@ class CurrentState extends Equatable {
   /// confidence threshold.
   double? valueOf(HsiAxis a) {
     final r = reading(a);
-    return r != null && r.isAvailable ? r.value : null;
+    return r != null && r.isAvailable && !isFloor(a) ? r.value : null;
+  }
+
+  /// A lower-is-more axis at exactly 0 with low confidence — which would
+  /// read as the MAXIMUM. **HYPOTHESIS (2026-09-30, device):** this is the
+  /// runtime's floor while evidence is thin, not a real maximum:
+  /// interruption_pressure 0.00@0.25 and cognitive_load 0.00@0.08 appeared
+  /// in the first windows after a start or a heart-rate gap, while focus
+  /// quality read 0.79@1.00. Treated as unavailable ("too early to tell").
+  bool isFloor(HsiAxis a) {
+    final r = reading(a);
+    return r != null && directionOf(a) == HsiDirection.lowerIsMore && r.value == 0 && r.confidence < AxisReading.resonaMinConfidence;
   }
 
   List<HsiAxis> get availableAxes => [for (final a in HsiAxis.values) if (valueOf(a) != null) a];
@@ -340,25 +369,20 @@ class CurrentState extends Equatable {
     }
 
     double? inverted(HsiAxis a) {
-      final v = valueOf(a);
+      final v = amountOf(a);
       return v == null ? null : 1 - v;
     }
 
     return switch (p) {
-      PlainSignal.energy => valueOf(HsiAxis.arousal),
-      PlainSignal.mentalLoad => highest([valueOf(HsiAxis.stress), inverted(HsiAxis.capacity), valueOf(HsiAxis.cognitiveLoad)]),
+      PlainSignal.energy => amountOf(HsiAxis.arousal),
+      PlainSignal.mentalLoad => highest([amountOf(HsiAxis.stress), inverted(HsiAxis.capacity), amountOf(HsiAxis.cognitiveLoad)]),
       PlainSignal.engagement => () {
-          final v = [valueOf(HsiAxis.focus), valueOf(HsiAxis.focusQuality)].whereType<double>().toList();
+          final v = [amountOf(HsiAxis.focus), amountOf(HsiAxis.focusQuality)].whereType<double>().toList();
           return v.isEmpty ? null : v.reduce((a, b) => a + b) / v.length;
         }(),
-      PlainSignal.tiredness => highest([valueOf(HsiAxis.mentalFatigue), inverted(HsiAxis.sleep)]),
-      PlainSignal.interruptions => switch (directionOf(HsiAxis.interruptionPressure)) {
-          HsiDirection.lowerIsMore => inverted(HsiAxis.interruptionPressure),
-          HsiDirection.higherIsMore => valueOf(HsiAxis.interruptionPressure),
-          // Which end is "more" is not stated: not shown as a level.
-          HsiDirection.bidirectional => null,
-        },
-      PlainSignal.mood => valueOf(HsiAxis.valence),
+      PlainSignal.tiredness => highest([amountOf(HsiAxis.mentalFatigue), inverted(HsiAxis.sleep)]),
+      PlainSignal.interruptions => amountOf(HsiAxis.interruptionPressure),
+      PlainSignal.mood => amountOf(HsiAxis.valence),
     };
   }
 
@@ -385,10 +409,10 @@ class CurrentState extends Equatable {
   /// suggest an easy watch; engagement (focus with focus quality) replaces
   /// focus alone.
   Experience? get suggestedExperience {
-    final stress = valueOf(HsiAxis.stress);
-    final arousal = valueOf(HsiAxis.arousal);
-    final capacity = valueOf(HsiAxis.capacity);
-    final load = valueOf(HsiAxis.cognitiveLoad);
+    final stress = amountOf(HsiAxis.stress);
+    final arousal = amountOf(HsiAxis.arousal);
+    final capacity = amountOf(HsiAxis.capacity);
+    final load = amountOf(HsiAxis.cognitiveLoad);
     final engagement = plain(PlainSignal.engagement);
     final tiredness = plain(PlainSignal.tiredness);
     final interruptions = plain(PlainSignal.interruptions);

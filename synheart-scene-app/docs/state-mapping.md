@@ -82,6 +82,21 @@ the behavior axes count against the core four (demo choice).
 | Energy | 0.3 + 0.55 · arousal | arousal |
 | Lighter tone preferred | strain ≥ 0.6, or mood (valence) ≤ 0.35 | strain or valence |
 
+**Directions.** Every mapping reads an axis's *amount* by the direction the
+snapshot itself states (`direction`), never the raw score: higher-is-more →
+the score, lower-is-more → 1 − score, bidirectional → not used (except
+valence, negative → positive by definition). Seen on device with runtime
+0.32.0 (2026-09-30): **`cognitive_load` and `interruption_pressure` are
+lower-is-more**; `interaction_mode` and `valence` bidirectional; focus,
+capacity, stress, arousal, mental_fatigue and focus_quality higher-is-more.
+
+> **HYPOTHESIS:** a lower-is-more axis at exactly 0.00 with low confidence
+> is the runtime's floor while evidence is thin, not a maximum —
+> interruption_pressure 0.00@0.25 and cognitive_load 0.00@0.08 appeared in
+> the first windows after a start or a heart-rate gap, while focus quality
+> read 0.79@1.00. Scene treats it as unavailable ("too early to tell").
+> Confirm with the runtime team.
+
 **Interaction mode is never ranked on.** Its HSI direction is
 `bidirectional` and neither the SDK nor the runtime docs say which end is
 passive consumption and which is active input; guessing could invert it. It

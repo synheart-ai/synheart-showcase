@@ -15,7 +15,7 @@ String snapshot() => jsonEncode({
       'axes': {
         'cognitive': [
           {'name': 'focus', 'score': 0.62, 'confidence': 0.5, 'direction': 'higher_is_more'},
-          {'name': 'cognitive_load', 'score': 0.4, 'confidence': 0.3, 'direction': 'higher_is_more'},
+          {'name': 'cognitive_load', 'score': 0.4, 'confidence': 0.3, 'direction': 'lower_is_more'},
           {'name': 'mental_fatigue', 'score': null, 'confidence': 0.0},
         ],
         'affective': [
@@ -50,6 +50,8 @@ void main() {
     test('scored axes in every domain', () {
       expect(s.focus, const AxisReading(0.62, 0.5));
       expect(s.cognitiveLoad, const AxisReading(0.4, 0.3));
+      expect(s.directionOf(HsiAxis.cognitiveLoad), HsiDirection.lowerIsMore, reason: 'as runtime 0.32.0 labels it');
+      expect(s.plain(PlainSignal.mentalLoad), closeTo(0.6, 1e-9), reason: 'lower-is-more 0.4 is 0.6 load');
       expect(s.valence, const AxisReading(0.3, 0.2));
       expect(s.focusQuality, const AxisReading(0.7, 0.6));
       expect(s.interruptionPressure, const AxisReading(0.2, 0.5));
@@ -111,7 +113,25 @@ void main() {
     });
   });
 
-    group('plain signals from the behavior axes', () {
+    group('a lower-is-more 0.00 at low confidence is a floor, not a maximum', () {
+    test('seen on device: not available, "too early to tell"', () {
+      const s = CurrentState(
+          interruptionPressure: AxisReading(0.0, 0.25), cognitiveLoad: AxisReading(0.0, 0.08), source: StateSource.synheart);
+      expect(s.plain(PlainSignal.interruptions), isNull);
+      expect(s.plain(PlainSignal.mentalLoad), isNull);
+      expect(s.whyUnavailableSignal(PlainSignal.interruptions), 'too early to tell');
+      expect(s.suggestedExperience, isNull, reason: 'no false "Unwind"');
+    });
+
+    test('a confident 0.00, or a small non-zero score, still counts', () {
+      const confident = CurrentState(interruptionPressure: AxisReading(0.0, 0.9), source: StateSource.synheart);
+      const small = CurrentState(interruptionPressure: AxisReading(0.05, 0.25), source: StateSource.synheart);
+      expect(confident.plain(PlainSignal.interruptions), 1.0);
+      expect(small.plain(PlainSignal.interruptions), closeTo(0.95, 1e-9));
+    });
+  });
+
+  group('plain signals from the behavior axes', () {
     test('interruptions invert interruption pressure (lower is more)', () {
       const s = CurrentState(interruptionPressure: AxisReading(0.2, 0.5), source: StateSource.synheart);
       expect(s.plain(PlainSignal.interruptions), closeTo(0.8, 1e-9));
@@ -133,15 +153,22 @@ void main() {
       expect(PlainSignal.mood.levelLabel(s.levelOf(PlainSignal.mood)!), 'Lower');
     });
 
-    test('mental load includes cognitive load', () {
-      const s = CurrentState(stress: AxisReading(0.2, 0.5), cognitiveLoad: AxisReading(0.75, 0.5), source: StateSource.synheart);
+    test('mental load includes cognitive load, which is lower-is-more', () {
+      const s = CurrentState(stress: AxisReading(0.2, 0.5), cognitiveLoad: AxisReading(0.25, 0.5), source: StateSource.synheart);
       expect(s.plain(PlainSignal.mentalLoad), 0.75);
+    });
+
+    test('a bidirectional axis other than valence gives no amount', () {
+      const s = CurrentState(
+          arousal: AxisReading(0.9, 0.5), directions: {HsiAxis.arousal: HsiDirection.bidirectional}, source: StateSource.synheart);
+      expect(s.plain(PlainSignal.energy), isNull);
+      expect(s.suggestedExperience, isNull);
     });
   });
 
   group('policy with the behavior axes', () {
-    test('high cognitive load suggests unwinding', () {
-      const s = CurrentState(cognitiveLoad: AxisReading(0.75, 0.5), source: StateSource.synheart);
+    test('high cognitive load (a low score) suggests unwinding', () {
+      const s = CurrentState(cognitiveLoad: AxisReading(0.25, 0.5), source: StateSource.synheart);
       expect(s.suggestedExperience, Experience.unwind);
     });
 
@@ -172,7 +199,7 @@ void main() {
 
     test('behavior axes count less than the core axes', () {
       final core = StateTargets.from(const CurrentState(stress: AxisReading(0.8, 0.5), source: StateSource.synheart));
-      final behavior = StateTargets.from(const CurrentState(cognitiveLoad: AxisReading(0.8, 0.5), source: StateSource.synheart));
+      final behavior = StateTargets.from(const CurrentState(cognitiveLoad: AxisReading(0.2, 0.5), source: StateSource.synheart));
       expect(behavior.strain, lessThan(core.strain!));
       expect(behavior.strain, closeTo(secondaryWeight * 0.8, 1e-9));
     });

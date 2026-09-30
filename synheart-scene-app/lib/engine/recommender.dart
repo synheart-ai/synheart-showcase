@@ -90,10 +90,11 @@ class StateTargets {
   bool get isEmpty => intensity == null && cognitiveLoad == null && energy == null;
 
   factory StateTargets.from(CurrentState s) {
-    final stress = s.valueOf(HsiAxis.stress);
-    final capacity = s.valueOf(HsiAxis.capacity);
-    final arousal = s.valueOf(HsiAxis.arousal);
-    final load = s.valueOf(HsiAxis.cognitiveLoad);
+    // Amounts, by each axis's direction — never the raw score.
+    final stress = s.amountOf(HsiAxis.stress);
+    final capacity = s.amountOf(HsiAxis.capacity);
+    final arousal = s.amountOf(HsiAxis.arousal);
+    final load = s.amountOf(HsiAxis.cognitiveLoad);
     final engagement = s.plain(PlainSignal.engagement);
     final tiredness = s.plain(PlainSignal.tiredness);
     final interruptions = s.plain(PlainSignal.interruptions);
@@ -107,7 +108,7 @@ class StateTargets {
     final strain = signs.isEmpty ? null : signs.reduce((a, b) => a > b ? a : b);
     return StateTargets(
       strain: strain,
-      mood: s.valueOf(HsiAxis.valence),
+      mood: s.amountOf(HsiAxis.valence),
       intensity: strain == null ? null : _clamp01(0.8 - 0.6 * strain),
       // Settled focus can take a demanding film; drifting focus, tiredness or
       // a stream of interruptions want one that is easy to follow.
