@@ -42,9 +42,16 @@ class TonightScreen extends StatelessWidget {
     final current = picks.state;
     final at = s.current?.capturedAt;
 
+    // The demo line only when the state really changed the list; a reorder of
+    // the same films is said plainly (RFC §10: no forced change).
+    final meaningful = picks.withState && (picks.compare()?.isMeaningful ?? false);
+    final demoSuffix = [
+      if (current?.source == StateSource.preset) ' (Demo data — not a real reading.)',
+      if (picks.withState && current!.isLowConfidence) ' Based on a low-confidence reading.',
+    ].join();
     final String note;
     if (picks.withState) {
-      note = '';
+      note = meaningful ? '' : 'Tonight\'s state barely changes your list — your taste already fits it.$demoSuffix';
     } else if (picks.isStale) {
       note = 'Taste only. Your last reading, from ${ageLabel(at!, cubit.now())}, is too old to use.';
     } else if (picks.lacksEvidence) {
@@ -92,11 +99,11 @@ class TonightScreen extends StatelessWidget {
             const SizedBox(height: 14),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
-              child: picks.withState
+              child: meaningful
                   ? Callout(
                       key: const ValueKey('changed'),
                       title: "Your preferences haven't changed.",
-                      child: Text('Your context has.${current!.source == StateSource.preset ? ' (Demo data — not a real reading.)' : ''}'),
+                      child: Text('Your context has.$demoSuffix'),
                     )
                   : Callout(key: ValueKey(note), child: Text(note)),
             ),

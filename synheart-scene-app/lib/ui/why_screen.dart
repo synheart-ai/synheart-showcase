@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app/demo_log.dart';
 import '../app/movie_info_store.dart';
-import '../data/tmdb.dart';
 import '../app/scene_cubit.dart';
+import '../engine/explain.dart';
 import '../engine/recommender.dart';
 import 'picks.dart';
 import 'poster.dart';
+import 'routes.dart';
 import 'theme.dart';
 import 'tonight_extras.dart';
 import 'widgets.dart';
@@ -35,6 +37,7 @@ class WhyScreen extends StatelessWidget {
     final e = picks.explanation(r, withRank: true);
     final f = r.film;
     final w = r.weights;
+    final state = w.usesState ? picks.state : null;
 
     return LogOnShow(
       event: DemoEvent.explanationViewed,
@@ -73,8 +76,27 @@ class WhyScreen extends StatelessWidget {
               icon: Icons.favorite_border,
               title: 'Right now',
               text: e.rightNow ?? 'No current state or choice of evening was used for this pick.',
+              // RFC §8: show the snapshot's age and offer a new check-in.
+              extra: state == null
+                  ? const []
+                  : [
+                      if (state.isLowConfidence) const LowConfidenceTag(),
+                      Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, children: [
+                        if (state.capturedAt != null)
+                          Text('Reading taken ${ageLabel(state.capturedAt!, context.read<SceneCubit>().now())}',
+                              style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+                        TextButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Check in again')),
+                      ]),
+                    ],
             ),
             _Reason(icon: Icons.auto_awesome_outlined, title: 'How that affected this pick', text: e.effect),
+            // The plan's closing message (§10), where the demo story ends.
+            if (state != null) ...[
+              const Callout(
+                child: Text('Synheart adds the missing context between what a person generally prefers and what may fit their present moment.'),
+              ),
+              const SizedBox(height: 16),
+            ],
             const SizedBox(height: 12),
             Text('What went into the ranking', style: t.titleLarge),
             const SizedBox(height: 4),
@@ -93,10 +115,11 @@ class WhyScreen extends StatelessWidget {
 }
 
 class _Reason extends StatelessWidget {
-  const _Reason({required this.icon, required this.title, required this.text});
+  const _Reason({required this.icon, required this.title, required this.text, this.extra = const []});
   final IconData icon;
   final String title;
   final String text;
+  final List<Widget> extra;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +136,7 @@ class _Reason extends StatelessWidget {
               Text(title, style: t.titleMedium),
               const SizedBox(height: 2),
               Text(text, style: t.bodyLarge),
+              ...extra,
             ]),
           ),
         ],
@@ -181,7 +205,7 @@ class _Synopsis extends StatelessWidget {
               label: const Text('Watch trailer'),
             ),
           const SizedBox(height: 6),
-          Text('Film data from TMDB. $tmdbAttribution', style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+          const TmdbCredit(lead: 'Film data from TMDB.'),
         ],
       ),
     );

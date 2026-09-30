@@ -42,6 +42,21 @@ void main() {
     expect(e.effect, contains('your current state for 15% and your choices for 35%'));
   });
 
+  test('an explicit intent leads the headline, over the inferred need (RFC §4 override)', () {
+    const viewing = ViewingContext(intent: EveningIntent.engaging);
+    final r = engine.score(filmById('knives-out')!, persona, state: DemoScenario.busyEvening.state, context: viewing);
+    final e = explain(r, state: DemoScenario.busyEvening.state, viewing: viewing);
+    expect(e.headline, contains('fits your choice: "Give me something engaging"'));
+    expect(e.headline, isNot(contains('lighter')));
+  });
+
+  test('a low-confidence reading says so in "Right now"', () {
+    const watch = CurrentState(focus: AxisReading(0.0, 0.17), arousal: AxisReading(0.5, 0.14), source: StateSource.synheart);
+    final r = engine.score(filmById('knives-out')!, persona, state: watch);
+    final e = explain(r, state: watch);
+    expect(e.rightNow, contains('low-confidence reading, so treat it lightly'));
+  });
+
   test('taste only with an intent: no current state claimed', () {
     const viewing = ViewingContext(intent: EveningIntent.engaging);
     final r = engine.score(filmById('se7en')!, persona, mode: RecommendationMode.tasteOnly, context: viewing);

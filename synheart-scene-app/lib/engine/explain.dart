@@ -88,7 +88,8 @@ Explanation explain(
   // In the plan's plain language, not raw HSI axis names.
   final used = [for (final p in PlainSignal.values) if (st.plain(p) != null) '${p.label.toLowerCase()} (${st.levelOf(p)!.label.toLowerCase()})'];
   final missing = [for (final p in PlainSignal.values) if (st.plain(p) == null) p.label.toLowerCase()];
-  final basis = 'Based on ${_join(used)}${missing.isEmpty ? '' : ' (${_join(missing)} not available)'}.';
+  final basis = 'Based on ${_join(used)}${missing.isEmpty ? '' : ' (${_join(missing)} not available)'}.'
+      '${st.isLowConfidence ? ' This is a low-confidence reading, so treat it lightly.' : ''}';
   final need = st.suggestedExperience;
   final rightNow = [
     need == null
@@ -107,11 +108,15 @@ Explanation explain(
       'Support: ${supportLabel(r.taste).toLowerCase()} on taste, ${supportLabel(r.state).toLowerCase()} for right now.$moved';
 
   final what = traits.isNotEmpty ? traits.first : (genres.isNotEmpty ? '${genres.first} stories' : 'the films you like');
-  final headline = t.prefersLightTone
-      ? 'Keeps your taste for $what, and something ${f.tone.isLight ? 'lighter' : 'less intense'} may suit tonight.'
-      : need == null
-          ? 'Keeps your taste for $what, and fits how tonight looks.'
-          : 'Keeps your taste for $what, and may suit ${need.phrase}.';
+  // An explicit intent takes precedence over the inferred need, in the
+  // explanation as in the ranking (RFC §4 "User override").
+  final headline = viewing.intent != null
+      ? 'Keeps your taste for $what, and fits your choice: "${viewing.intent!.label}".'
+      : t.prefersLightTone
+          ? 'Keeps your taste for $what, and something ${f.tone.isLight ? 'lighter' : 'less intense'} may suit tonight.'
+          : need == null
+              ? 'Keeps your taste for $what, and fits how tonight looks.'
+              : 'Keeps your taste for $what, and may suit ${need.phrase}.';
 
   return Explanation(taste: taste, rightNow: rightNow, effect: effect, headline: headline);
 }

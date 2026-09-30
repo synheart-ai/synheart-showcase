@@ -32,7 +32,7 @@ class ConsentCard extends StatelessWidget {
           style: t.bodyLarge,
         ),
         const SizedBox(height: 16),
-        const _Point(icon: Icons.favorite_border, title: 'What is read', text: 'Heart rate and heart-rate variability from the one source you choose.'),
+        const _Point(icon: Icons.favorite_border, title: 'What is read', text: 'Heart rate from the one source you choose, and heart-rate variability when it provides it. The Galaxy Watch sends heart rate only.'),
         const _Point(
           icon: Icons.timer_outlined,
           title: 'When',
@@ -46,9 +46,14 @@ class ConsentCard extends StatelessWidget {
         const _Point(
           icon: Icons.visibility_outlined,
           title: 'What you see',
-          text: 'Plain words — energy, mental load, engagement — not medical scores. Uncertain readings are left out.',
+          text: 'Plain words — energy, mental load, engagement — not medical scores. Uncertain readings are marked low confidence.',
         ),
         const _Point(icon: Icons.history, title: 'What is kept', text: 'Only the result and its time, until you reset the demo.'),
+        const _Point(
+          icon: Icons.movie_outlined,
+          title: 'Film data',
+          text: 'Posters, synopses and trailers come from TMDB and YouTube over the internet. No health data is sent with them.',
+        ),
         if (error != null) ...[
           const SizedBox(height: 8),
           Callout(title: 'Synheart could not start', child: Text(error!)),

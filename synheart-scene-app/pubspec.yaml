@@ -70,6 +70,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # TMDB's official "Primary short (blue)" logo, rendered from their SVG
+  # (themoviedb.org/about/logos-attribution), for the required attribution.
+  assets:
+    - assets/tmdb_logo.png
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

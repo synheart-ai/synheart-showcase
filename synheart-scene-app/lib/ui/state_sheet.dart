@@ -78,15 +78,25 @@ class StateView {
     }
     if (fresh != null && fresh.hasEvidence) {
       final need = fresh.suggestedExperience;
+      // A thin reading keeps its short pill, but says so to screen readers and
+      // in the sheet (RFC §8: tentative about inferred context).
+      final low = fresh.isLowConfidence ? ' (low confidence)' : '';
+      final lowNote = fresh.isLowConfidence ? ' Synheart is not sure about this reading, so treat it lightly.' : '';
       return need == null
           ? StateView(
-              label: 'No clear need',
+              label: 'No clear need$low',
               pill: 'No clear need',
               headline: 'Nothing stands out tonight',
-              message: 'Your picks follow your taste, nudged a little by what Synheart sees.',
+              message: 'Your picks follow your taste, nudged a little by what Synheart sees.$lowNote',
               icon: Icons.remove_red_eye_outlined,
               reading: fresh)
-          : StateView(label: need.label, headline: need.headline, message: need.message, icon: Icons.favorite, reading: fresh);
+          : StateView(
+              label: '${need.label}$low',
+              pill: need.label,
+              headline: need.headline,
+              message: '${need.message}$lowNote',
+              icon: Icons.favorite,
+              reading: fresh);
     }
     return switch (engine.display) {
       DisplayState.listening => StateView(

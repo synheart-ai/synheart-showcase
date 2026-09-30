@@ -61,6 +61,13 @@ void main() {
       expect(withState, isNot(contains('prisoners')));
     });
 
+    test('the demo lists are pinned, in order (README demo script; differs from the plan on purpose)', () {
+      // Glass Onion / Ocean's Eleven and places 5–8 are near-ties: a small tag
+      // change can reorder the stage lists. This test makes such a change visible.
+      expect(tasteOnly, ['se7en', 'ex-machina', 'prisoners', 'shutter-island', 'gone-girl']);
+      expect(withState, ['glass-onion', 'oceans-eleven', 'nice-guys', 'knives-out', 'hot-fuzz']);
+    });
+
     test('the lists differ although the taste profile is the same', () {
       expect(withState.toSet().intersection(tasteOnly.toSet()), isEmpty);
     });
@@ -129,6 +136,17 @@ void main() {
       expect(onlyStress.levelOf(PlainSignal.mentalLoad), SignalLevel.high, reason: 'capacity is below the gate; stress alone counts');
       expect(onlyStress.levelOf(PlainSignal.energy), isNull);
       expect(onlyStress.levelOf(PlainSignal.engagement), isNull);
+    });
+
+    test("readings under Resona's 0.45 are used but marked low confidence", () {
+      expect(const AxisReading(0.5, 0.17).isLowConfidence, isTrue);
+      expect(const AxisReading(0.5, 0.6).isLowConfidence, isFalse);
+      expect(const AxisReading(0.5, 0.0).isLowConfidence, isFalse, reason: 'unavailable, not low confidence');
+      const watch = CurrentState(focus: AxisReading(0.0, 0.17), arousal: AxisReading(0.5, 0.14), source: StateSource.synheart);
+      expect(watch.isLowConfidence, isTrue);
+      expect(watch.isLowConfidenceSignal(PlainSignal.engagement), isTrue);
+      expect(watch.isLowConfidenceSignal(PlainSignal.mentalLoad), isFalse, reason: 'no stress or capacity reading');
+      expect(DemoScenario.busyEvening.state.isLowConfidence, isFalse);
     });
 
     test('the gate is temporarily "above 0": a heart-rate-only watch reading counts', () {

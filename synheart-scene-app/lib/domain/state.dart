@@ -24,6 +24,11 @@ class AxisReading extends Equatable {
 
   bool get isAvailable => confidence > minConfidence;
 
+  /// Used (above the temporary gate) but below Resona's 0.45: shown with a
+  /// "low confidence" marker so a thin reading never looks certain (RFC §8,
+  /// §9.4). A heart-rate-only watch gives 0.01–0.17.
+  bool get isLowConfidence => isAvailable && confidence < resonaMinConfidence;
+
   @override
   List<Object?> get props => [value, confidence];
 }
@@ -179,6 +184,13 @@ class CurrentState extends Equatable {
     final v = plain(p);
     return v == null ? null : SignalLevel.of(v);
   }
+
+  /// Whether any axis behind this plain signal is a low-confidence reading.
+  bool isLowConfidenceSignal(PlainSignal p) => p.sources.any((a) => reading(a)?.isLowConfidence ?? false);
+
+  /// Whether any axis in use is a low-confidence reading — then every
+  /// state-based label and suggestion is marked as such.
+  bool get isLowConfidence => availableAxes.any((a) => reading(a)!.isLowConfidence);
 
   /// At least one axis is usable. Without that, Scene says there is not
   /// enough evidence and ranks on taste only.

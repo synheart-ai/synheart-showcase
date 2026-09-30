@@ -8,7 +8,6 @@ import '../app/signals.dart';
 import '../app/state_engine.dart';
 import '../data/catalogue.dart';
 import '../data/demo_scenarios.dart';
-import '../data/tmdb.dart';
 import 'check_in_parts.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -258,8 +257,10 @@ class _FilmData extends StatelessWidget {
             child: const Text('Fetch film data again'),
           ),
         const SizedBox(height: 4),
-        Text('Posters, synopses and trailers: TMDB. $tmdbAttribution Recommendations use Scene\'s own film tags.',
-            style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+        const TmdbCredit(
+          lead: 'Posters, synopses and trailers come from TMDB (and trailers from YouTube), fetched over the internet; '
+              'no health data is sent with them. Recommendations use Scene\'s own film tags.',
+        ),
       ],
     );
   }

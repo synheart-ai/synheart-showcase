@@ -49,6 +49,21 @@ void main() {
     await tester.dragUntilVisible(find.textContaining('On taste alone it was #'), find.byType(ListView).last, const Offset(0, -200));
     expect(find.text('How that affected this pick'), findsOneWidget);
     expect(find.textContaining('On taste alone it was #'), findsOneWidget);
+
+    // RFC §8: the snapshot's age and a new check-in; plan §10: the closing message.
+    expect(find.textContaining('Reading taken'), findsOneWidget);
+    expect(find.text('Check in again'), findsOneWidget);
+    const closing = 'Synheart adds the missing context between what a person generally prefers and what may fit their present moment.';
+    await tester.dragUntilVisible(find.text(closing), find.byType(ListView).last, const Offset(0, -200));
+    expect(find.text(closing), findsOneWidget);
+  });
+
+  testWidgets('Tonight shows the demo line only when the state really changed the list (RFC §10)', (tester) async {
+    await toTonight(tester, scenario: 'Rested');
+    await tester.tap(find.text('TASTE + CURRENT STATE'));
+    await tester.pumpAndSettle();
+    expect(find.text("Your preferences haven't changed."), findsNothing);
+    expect(find.textContaining("Tonight's state barely changes your list"), findsOneWidget);
   });
 
   testWidgets('What changed? shows movement and the demo line for a meaningful change', (tester) async {

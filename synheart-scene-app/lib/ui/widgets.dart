@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
+import '../data/tmdb.dart';
 import 'routes.dart';
 import 'theme.dart';
 
@@ -38,6 +39,37 @@ class Callout extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// The "low confidence" marker for a state label or suggestion built from a
+/// reading below Resona's 0.45 (see [AxisReading.isLowConfidence]).
+class LowConfidenceTag extends StatelessWidget {
+  const LowConfidenceTag({super.key});
+
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.info_outline, size: 14, color: SceneColors.sage),
+        const SizedBox(width: 4),
+        Flexible(child: Text('low confidence', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SceneColors.sage))),
+      ]);
+}
+
+/// TMDB's logo with its required attribution (TMDB terms of use).
+class TmdbCredit extends StatelessWidget {
+  const TmdbCredit({super.key, this.lead = ''});
+
+  /// Text before the attribution, e.g. "Posters, synopses and trailers: TMDB."
+  final String lead;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(color: SceneColors.sage);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Image.asset('assets/tmdb_logo.png', height: 12, semanticLabel: 'The Movie Database (TMDB) logo'),
+      const SizedBox(height: 6),
+      Text('${lead.isEmpty ? '' : '$lead '}$tmdbAttribution', style: style),
+    ]);
+  }
 }
 
 /// Standard padded, scrollable page body with an optional sticky bottom action.
