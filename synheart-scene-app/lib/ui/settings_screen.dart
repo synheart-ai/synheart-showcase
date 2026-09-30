@@ -130,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 4),
         Text(
           engine.sourceStalled
-              ? 'No heart rate for a minute — reconnecting…'
+              ? 'No heart rate for a minute · reconnecting every minute…'
               : engine.isLive
                   ? 'Signal arriving${engine.heartRate == null ? '' : ' · ${engine.heartRate!.round()} BPM'}'
                   : 'Waiting for a signal…',

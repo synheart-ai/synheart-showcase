@@ -44,6 +44,7 @@ class FakeSignals implements SignalBackend {
 
   bool watchSupported = true;
   String? watchName = 'Galaxy Watch6';
+  bool watchUnreachable = false;
 
   @override
   bool get supportsWatch => watchSupported;
@@ -51,6 +52,7 @@ class FakeSignals implements SignalBackend {
   @override
   Future<String> connectWatch() async {
     calls.add('watch');
+    if (watchUnreachable) throw StateError('No watch is connected.');
     if (watchName == null) throw StateError('No watch is connected.');
     return watchName!;
   }

@@ -105,6 +105,9 @@ class SceneStateEngine extends ChangeNotifier {
   Timer? _checkInTimer;
   Timer? _diagTimer;
   Timer? _watchdog;
+  // Heart rate only: a reading built from behavior alone must not reset the
+  // watchdog (seen 2026-09-30: retries drifted to 105-120 s).
+  DateTime? _lastHeartRateAt;
   DateTime? _connectedAt;
   DateTime? _lastRestartAt;
   bool _stalled = false;
@@ -319,7 +322,7 @@ class SceneStateEngine extends ChangeNotifier {
     if (!_consented || chosen == null || _starting || _presenting) return;
     if (chosen.source != WearableSource.watch && chosen.source != WearableSource.bluetooth) return;
     final now = _clock();
-    final since = [_lastSampleAt, _connectedAt, _lastRestartAt]
+    final since = [_lastHeartRateAt, _connectedAt, _lastRestartAt]
         .whereType<DateTime>()
         .fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
     if (since == null || now.difference(since) < stalledAfter) return;
@@ -331,6 +334,13 @@ class SceneStateEngine extends ChangeNotifier {
     notifyListeners();
     _connect(chosen.source, chosen.connect, name: chosen.name).catchError((Object e) {
       CheckInDiagnostics.log('reconnect failed: ${_describe(e)}');
+      // Keep showing the chosen source; its setup error ("pair your watch")
+      // is wrong for a watch that is only out of reach. Retries continue.
+      _error = null;
+      _source = chosen.source;
+      _sourceName = chosen.name;
+      backend.setBackgroundStatus('${chosen.name ?? chosen.source.label} not reachable — retrying every minute').catchError((_) {});
+      notifyListeners();
     });
   }
 
@@ -364,6 +374,7 @@ class SceneStateEngine extends ChangeNotifier {
   void _onHeartRate(double bpm) {
     _heartRate = bpm;
     _lastSampleAt = _clock();
+    _lastHeartRateAt = _lastSampleAt;
     if (_stalled) {
       _stalled = false;
       CheckInDiagnostics.log('heart rate back after restart #$_restarts');

@@ -148,6 +148,35 @@ void main() {
         });
       });
 
+      test('an unreachable watch keeps its place, and readings do not reset the minute', () {
+        fakeAsync((async) {
+          engine.consent();
+          async.flushMicrotasks();
+          engine.connectWatch();
+          async.flushMicrotasks();
+          fake.watchUnreachable = true;
+          advance(async, const Duration(seconds: 65));
+          expect(watchConnects(), 2);
+          expect(engine.source, WearableSource.watch);
+          expect(engine.error, isNull);
+          expect(fake.backgroundProblem, contains('not reachable'));
+
+          // A behavior-only reading arrives between retries.
+          advance(async, const Duration(seconds: 30));
+          fake.emit(unwind);
+          advance(async, const Duration(seconds: 35));
+          expect(watchConnects(), 3, reason: 'still one minute apart');
+
+          fake.watchUnreachable = false;
+          advance(async, const Duration(seconds: 60));
+          expect(watchConnects(), 4);
+          fake.heartRateCtl.add(71);
+          expect(engine.sourceStalled, isFalse);
+          expect(fake.backgroundProblem, isNull);
+          engine.dispose();
+        });
+      });
+
       test('a steady watch is left alone', () {
         fakeAsync((async) {
           engine.consent();
