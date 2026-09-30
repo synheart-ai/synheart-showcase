@@ -20,8 +20,8 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 | Item | Value |
 |---|---|
 | Packages | `synheart_core` 0.15.0, `synheart_wear` 0.5.0 |
-| Native runtime | `synheart-core-runtime` 0.31.5 and `syni-runtime` 0.4.4, installed with `synheart install runtime`; pinned in `synheart.lock` |
-| Output | `Synheart.onStateUpdate` → `HSIState.hsi` axes `focus`, `stress`, `arousal`, `capacity`; each `{value 0–1, confidence 0–1}`. `sleep` and the digital axes are not used |
+| Native runtime | `synheart-core-runtime-lab` **0.32.0** (lab channel, since 2026-09-30; was stable 0.31.5), installed with `synheart install runtime`; pinned in `synheart.lock`. `synheart_core` 0.15.0 was written against 0.31.1 and loads anything ≥ 0.20.0. Move to the stable channel when 0.32.0 is published there. `syni-runtime` is no longer in the lock ("not published"); Scene sets `syni: false` |
+| Output | `Synheart.onStateUpdate` → every axis in the HSI 1.3 snapshot (`HSIState.rawJson`, `axes.<domain>[]` by name; typed `HSIState.hsi` fields as fallback), each `{score 0–1, confidence 0–1}`: **core** focus, stress, arousal, capacity; **behavior** cognitive_load, mental_fatigue, valence, sleep_score, focus_quality, interruption_pressure, interaction_mode. A null score is "could not compute", never zero. Also read: `state_withheld` and the digital `diagnostics.notes` (reasons), `modalities` (basis), `meta.synheart.context` (activity guess, Details only, not stored). The embedding is ignored (`privacy.embedding_allowed: false`). Each snapshot is logged as one `[scene-hsi]` line in debug builds |
 | Sources | The Scene **Galaxy Watch** (Wear OS) app, relayed over the Wearable Data Layer (`WatchRelay`, provider `wear_os`); Apple Health (iOS) / Health Connect (Android) via `startWearCollection`; standard BLE heart-rate monitors via `BleHrmProvider`; WearSim pairing links (`ai.synheart.wearsim.signal.v1` over WebSocket) |
 | Inputs pushed | heart rate, RR intervals, vendor HRV (RMSSD); accelerometer from WearSim. The Galaxy Watch sends **heart rate only** (Health Services' `HEART_RATE_BPM` has no RR), which is Tier 3 in Synheart's research ruling on HR-only wearables: Capacity withheld, other axes capped, confidence ×0.60. On device it gave 0.00–0.17 |
 | Consent to the runtime | `biosignals: true`, `behavior: true` (since 2026-09-30); `phoneContext`, `allowCloud`, `allowResearch`, `allowVendorSync`, `syni`: all `false` |
@@ -54,26 +54,38 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 
 All four numbers are tunable defaults.
 
-## Experience policy (Resona's thresholds)
+## Experience policy (Resona's thresholds, plus the behavior axes)
 
 | Condition, on available axes, first match | Experience | Resona's mode | Suggested intent |
 |---|---|---|---|
-| stress ≥ 0.62, or arousal ≥ 0.76, or capacity ≤ 0.35 | Unwind | ease | Help me unwind |
-| focus ≤ 0.44 | Easy watch | clarity | Just entertain me |
-| focus ≥ 0.60 | Stay engaged | flow | Give me something engaging |
+| stress ≥ 0.62, or arousal ≥ 0.76, or capacity ≤ 0.35, or **cognitive load ≥ 0.70** | Unwind | ease | Help me unwind |
+| engagement ≤ 0.44, or **tiredness ≥ 0.70**, or **interruptions ≥ 0.70** | Easy watch | clarity | Just entertain me |
+| engagement ≥ 0.60 | Stay engaged | flow | Give me something engaging |
 | otherwise | *No clear need* (a real result) | — | none |
+
+Engagement is focus alone when focus quality is missing, so the core-only
+behavior is unchanged. The behavior thresholds (0.70) are demo choices
+(2026-09-30), stricter than the core ones because these axes are newer to
+Scene.
 
 ## From axes to film targets
 
-`strain` = the largest of: stress, 1 − capacity, clamp((arousal − 0.5) × 2), over
-the axes that are available. A missing axis sets no target.
+`strain` = the largest of: stress, 1 − capacity, clamp((arousal − 0.5) × 2),
+**0.8 × cognitive load** and **0.8 × tiredness**, over the axes that are
+available. A missing axis sets no target. `secondaryWeight` = 0.8 is how much
+the behavior axes count against the core four (demo choice).
 
 | Target | Formula | Needs |
 |---|---|---|
 | Intensity | 0.8 − 0.6 · strain | strain |
-| Cognitive load | 0.3 + 0.5 · focus − 0.15 · strain | focus |
+| Cognitive load | 0.3 + 0.5 · engagement − 0.15 · strain − 0.12 · tiredness − 0.08 · interruptions | engagement |
 | Energy | 0.3 + 0.55 · arousal | arousal |
-| Lighter tone preferred | strain ≥ 0.6 | strain |
+| Lighter tone preferred | strain ≥ 0.6, or mood (valence) ≤ 0.35 | strain or valence |
+
+**Interaction mode is never ranked on.** Its HSI direction is
+`bidirectional` and neither the SDK nor the runtime docs say which end is
+passive consumption and which is active input; guessing could invert it. It
+is shown under Details with that note.
 
 State fit is the weighted closeness over the targets that exist (intensity
 0.40, cognitive load 0.25, energy 0.15, tone 0.20), and 0.5 when none exist.
@@ -86,11 +98,22 @@ axis names. **Provisional mapping — needs Research approval (RFC §6):**
 | Shown as | From | Level |
 |---|---|---|
 | Energy | arousal | Low < 0.36 ≤ Moderate < 0.66 ≤ High |
-| Mental load | the higher of stress and 1 − capacity | same |
-| Engagement | focus | same |
+| Mental load | the highest of stress, 1 − capacity and cognitive load | same |
+| Engagement | the mean of focus and focus quality | same |
+| Tiredness | the higher of mental fatigue and 1 − sleep | same |
+| Interruptions | 1 − interruption pressure (the score is lower-is-more) | same |
+| Mood | valence | Lower / Steady / Brighter — never "Low", which reads like a diagnosis |
 | Suggested experience | the policy above | Unwind / Easy watch / Stay engaged / No clear need |
 
-Only axes that pass the confidence gate count; otherwise *Not available*.
+Only axes that pass the confidence gate count; otherwise *Not available*,
+with the runtime's reason in plain words when it gave one (`no_signal` → "no
+heart-rate signal", `no_contributing_modality` → "no input for it yet",
+`cold_start…` → "still learning your baseline", `LOW_DIRECTIONAL_EVIDENCE` →
+"not enough evidence yet"; unknown codes are shown as they are). Details
+lists every axis's score and confidence, what the reading was built from,
+and the activity guess (marked "not used for picks"). *Why this movie?*
+names the three core signals when missing; the behavior signals only when
+present.
 The raw readings are under *Details*. The busy-evening demo data reads
 exactly as the plan's example card: Moderate / High / Moderate → Unwind.
 Heart rate is shown only as a live BPM indicator during a check-in.

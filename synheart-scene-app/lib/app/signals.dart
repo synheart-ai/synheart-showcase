@@ -195,20 +195,154 @@ class SynheartSignals implements SignalBackend {
         syni: false,
       ),
     );
-    _hsi = Synheart.onStateUpdate.listen((s) => _readings.add(_fromHsi(s)), onError: _readings.addError);
+    _hsi = Synheart.onStateUpdate.listen((s) {
+      if (kDebugMode) debugPrint('[scene-hsi] ${describeHsi(s.rawJson)}');
+      _readings.add(_fromHsi(s));
+    }, onError: _readings.addError);
     await Synheart.startSession();
     // No task type: choosing a film is not a focus task, and the type
     // modulates confidence, so Scene does not claim one.
     _running = true;
   }
 
+  /// Every HSI value in a snapshot on one line, for the debug log: each axis
+  /// domain as `name=score@confidence` (`-` when the score is null), then what
+  /// was withheld and why, the context guess, tiers and the engine version.
+  /// No raw biosignals are in the snapshot; the embedding is left out.
+  @visibleForTesting
+  static String describeHsi(String rawJson) {
+    try {
+      final m = jsonDecode(rawJson) as Map<String, dynamic>;
+      final parts = <String>[];
+      final axes = m['axes'];
+      if (axes is Map) {
+        for (final e in axes.entries) {
+          if (e.value is! List) continue;
+          final items = [
+            for (final r in e.value as List)
+              if (r is Map)
+                '${r['name']}=${r['score'] is num ? (r['score'] as num).toStringAsFixed(2) : '-'}'
+                    '@${r['confidence'] is num ? (r['confidence'] as num).toStringAsFixed(2) : '-'}',
+          ];
+          parts.add('${e.key}{${items.join(' ')}}');
+        }
+      }
+      final meta = m['meta'] is Map ? m['meta'] as Map : const {};
+      final sh = meta['synheart'] is Map ? meta['synheart'] as Map : const {};
+      if (sh['state_withheld'] is Map && (sh['state_withheld'] as Map).isNotEmpty) {
+        parts.add('withheld{${[for (final e in (sh['state_withheld'] as Map).entries) '${e.key}:${e.value}'].join(' ')}}');
+      }
+      final ctx = sh['context'];
+      if (ctx is Map) {
+        parts.add('context{${ctx['context_label']}@${ctx['context_confidence']} app:${ctx['foreground_app_category']} baseline:${ctx['baseline_maturity']}}');
+      }
+      if (sh['tiers'] is Map) parts.add('tiers${jsonEncode(sh['tiers'])}');
+      final prov = meta['provenance'] is Map ? meta['provenance'] as Map : const {};
+      parts.add('hsi ${m['hsi_version']} engine ${prov['engine_version'] ?? '?'} baseline ${prov['baseline_status'] ?? '?'}');
+      return parts.join(' · ');
+    } catch (e) {
+      return 'unparsed (${rawJson.length} chars): $e';
+    }
+  }
+
   static CurrentState _fromHsi(HSIState s) {
     AxisReading? r(HSIAxisValue? a) => a == null ? null : AxisReading(a.value, a.confidence);
+    return fromHsiJson(
+      s.rawJson,
+      typed: {
+        HsiAxis.focus: ?r(s.hsi.focus),
+        HsiAxis.stress: ?r(s.hsi.stress),
+        HsiAxis.arousal: ?r(s.hsi.arousal),
+        HsiAxis.capacity: ?r(s.hsi.capacity),
+        HsiAxis.sleep: ?r(s.hsi.sleep),
+        HsiAxis.focusQuality: ?r(s.hsi.focusQuality),
+        HsiAxis.interruptionPressure: ?r(s.hsi.interruptionPressure),
+        HsiAxis.interactionMode: ?r(s.hsi.interactionMode),
+      },
+      basis: {
+        if (s.modalities.physiological) Modality.physiological,
+        if (s.modalities.kinematic) Modality.kinematic,
+        if (s.modalities.digital) Modality.digital,
+      },
+    );
+  }
+
+  /// Every axis Scene reads, from an HSI 1.3 snapshot: each
+  /// `axes.<domain>[]` entry by name (a null score is skipped — "could not
+  /// compute", never zero), then [typed] for anything the JSON lacks (the
+  /// legacy path). Reasons come from `meta.synheart.state_withheld` and, for
+  /// digital axes with no score, `diagnostics.notes`. The embedding is
+  /// ignored (`privacy.embedding_allowed` is false).
+  @visibleForTesting
+  static CurrentState fromHsiJson(String rawJson, {Map<HsiAxis, AxisReading> typed = const {}, Set<Modality> basis = const {}}) {
+    final axes = <HsiAxis, AxisReading>{};
+    final withheld = <HsiAxis, String>{};
+    String? contextLabel;
+    String? appCategory;
+    try {
+      final m = jsonDecode(rawJson) as Map<String, dynamic>;
+      final domains = m['axes'];
+      final unscored = <HsiAxis>{};
+      if (domains is Map) {
+        for (final list in domains.values) {
+          if (list is! List) continue;
+          for (final e in list) {
+            if (e is! Map || e['name'] is! String) continue;
+            final a = HsiAxis.fromWire(e['name'] as String);
+            if (a == null) continue;
+            final score = e['score'];
+            if (score is num) {
+              final c = e['confidence'];
+              axes[a] = AxisReading(score.toDouble(), c is num ? c.toDouble() : 0.0);
+            } else {
+              unscored.add(a);
+            }
+          }
+        }
+      }
+      final meta = m['meta'] is Map ? m['meta'] as Map : const {};
+      final sh = meta['synheart'] is Map ? meta['synheart'] as Map : const {};
+      final w = sh['state_withheld'];
+      if (w is Map) {
+        for (final e in w.entries) {
+          if (HsiAxis.fromWire('${e.key}') case final a?) withheld[a] = '${e.value}';
+        }
+      }
+      final diag = sh['diagnostics'] is Map ? sh['diagnostics'] as Map : const {};
+      final notes = diag['notes'] is Map ? diag['notes'] as Map : const {};
+      for (final a in unscored) {
+        if (!withheld.containsKey(a) && notes[a.wireName] is String) withheld[a] = notes[a.wireName] as String;
+      }
+      final ctx = sh['context'];
+      if (ctx is Map) {
+        contextLabel = ctx['context_label'] is String ? ctx['context_label'] as String : null;
+        appCategory = ctx['foreground_app_category'] is String ? ctx['foreground_app_category'] as String : null;
+      }
+    } catch (_) {
+      // Not JSON (legacy path): the typed values are all there is.
+    }
+    for (final e in typed.entries) {
+      axes.putIfAbsent(e.key, () => e.value);
+    }
     return CurrentState(
-      focus: r(s.hsi.focus),
-      stress: r(s.hsi.stress),
-      arousal: r(s.hsi.arousal),
-      capacity: r(s.hsi.capacity),
+      focus: axes[HsiAxis.focus],
+      stress: axes[HsiAxis.stress],
+      arousal: axes[HsiAxis.arousal],
+      capacity: axes[HsiAxis.capacity],
+      cognitiveLoad: axes[HsiAxis.cognitiveLoad],
+      mentalFatigue: axes[HsiAxis.mentalFatigue],
+      valence: axes[HsiAxis.valence],
+      sleep: axes[HsiAxis.sleep],
+      focusQuality: axes[HsiAxis.focusQuality],
+      interruptionPressure: axes[HsiAxis.interruptionPressure],
+      interactionMode: axes[HsiAxis.interactionMode],
+      withheld: {
+        for (final e in withheld.entries)
+          if (axes[e.key] == null) e.key: e.value,
+      },
+      basis: basis,
+      contextLabel: contextLabel,
+      appCategory: appCategory,
       source: StateSource.synheart,
     );
   }

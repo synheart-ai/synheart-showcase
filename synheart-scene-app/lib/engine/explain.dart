@@ -86,9 +86,18 @@ Explanation explain(
     StateSource.preset => ('The demo data', 's'),
   };
   // In the plan's plain language, not raw HSI axis names.
-  final used = [for (final p in PlainSignal.values) if (st.plain(p) != null) '${p.label.toLowerCase()} (${st.levelOf(p)!.label.toLowerCase()})'];
-  final missing = [for (final p in PlainSignal.values) if (st.plain(p) == null) p.label.toLowerCase()];
+  final used = [
+    for (final p in PlainSignal.values)
+      if (st.plain(p) != null) '${p.label.toLowerCase()} (${p.levelLabel(st.levelOf(p)!).toLowerCase()})',
+  ];
+  // Missing ones are named only for the plan's three core signals; the
+  // behavior signals are often withheld and are mentioned only when present.
+  final missing = [
+    for (final p in const [PlainSignal.energy, PlainSignal.mentalLoad, PlainSignal.engagement])
+      if (st.plain(p) == null) p.label.toLowerCase(),
+  ];
   final basis = 'Based on ${_join(used)}${missing.isEmpty ? '' : ' (${_join(missing)} not available)'}.'
+      '${st.basisLabel == null ? '' : ' Read from ${st.basisLabel}.'}'
       '${st.isLowConfidence ? ' This is a low-confidence reading, so treat it lightly.' : ''}';
   final need = st.suggestedExperience;
   final rightNow = [

@@ -126,7 +126,7 @@ void main() {
     expect(find.text('This may be a good evening to unwind.'), findsOneWidget);
     expect(find.text('Mental load'), findsOneWidget);
     expect(find.text('High'), findsOneWidget);
-    expect(find.text('Not available'), findsNWidgets(2)); // energy and engagement were not in the reading
+    expect(find.text('Not available'), findsNWidgets(5)); // energy, engagement and the three behavior signals were not in the reading
     expect(find.text('Unwind'), findsOneWidget);
     expect(find.text('Help me unwind (suggested)'), findsOneWidget);
     expect(fake.calls.last, 'ble:hrm-1', reason: 'the check-in did not stop collection');

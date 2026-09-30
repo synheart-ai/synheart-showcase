@@ -60,11 +60,17 @@ enum RecommendationMode {
   final String label;
 }
 
+/// How much the behavior axes (cognitive load, mental fatigue, sleep,
+/// valence, focus quality, interruption pressure) count against the four
+/// core axes: they are newer to Scene and often withheld (2026-09-30, demo
+/// choice). Interaction mode is never used — its direction is undocumented.
+const secondaryWeight = 0.8;
+
 /// What the current state asks of a film, from the HSI axes that are
 /// available. A missing or low-confidence axis sets no target: Scene never
 /// turns absent evidence into a preference (Resona's rule).
 class StateTargets {
-  const StateTargets({this.intensity, this.cognitiveLoad, this.energy, this.strain});
+  const StateTargets({this.intensity, this.cognitiveLoad, this.energy, this.strain, this.mood});
 
   final double? intensity;
   final double? cognitiveLoad;
@@ -74,8 +80,12 @@ class StateTargets {
   /// arousal (0–1), or null when none of them is available.
   final double? strain;
 
-  /// Strain at or above 0.6: lighter tones fit better right now.
-  bool get prefersLightTone => strain != null && strain! >= 0.6;
+  /// A lower mood (valence), when available.
+  final double? mood;
+
+  /// Strain at or above 0.6, or a lower mood: lighter tones fit better
+  /// right now.
+  bool get prefersLightTone => (strain != null && strain! >= 0.6) || (mood != null && mood! <= 0.35);
 
   bool get isEmpty => intensity == null && cognitiveLoad == null && energy == null;
 
@@ -83,18 +93,31 @@ class StateTargets {
     final stress = s.valueOf(HsiAxis.stress);
     final capacity = s.valueOf(HsiAxis.capacity);
     final arousal = s.valueOf(HsiAxis.arousal);
-    final focus = s.valueOf(HsiAxis.focus);
+    final load = s.valueOf(HsiAxis.cognitiveLoad);
+    final engagement = s.plain(PlainSignal.engagement);
+    final tiredness = s.plain(PlainSignal.tiredness);
+    final interruptions = s.plain(PlainSignal.interruptions);
     final signs = [
       ?stress,
       if (capacity != null) 1 - capacity,
       if (arousal != null) _clamp01((arousal - 0.5) * 2),
+      if (load != null) secondaryWeight * load,
+      if (tiredness != null) secondaryWeight * tiredness,
     ];
     final strain = signs.isEmpty ? null : signs.reduce((a, b) => a > b ? a : b);
     return StateTargets(
       strain: strain,
+      mood: s.valueOf(HsiAxis.valence),
       intensity: strain == null ? null : _clamp01(0.8 - 0.6 * strain),
-      // Settled focus can take a demanding film; drifting focus wants an easy one.
-      cognitiveLoad: focus == null ? null : _clamp01(0.3 + 0.5 * focus - 0.15 * (strain ?? 0)),
+      // Settled focus can take a demanding film; drifting focus, tiredness or
+      // a stream of interruptions want one that is easy to follow.
+      cognitiveLoad: engagement == null
+          ? null
+          : _clamp01(0.3 +
+              0.5 * engagement -
+              0.15 * (strain ?? 0) -
+              0.15 * secondaryWeight * (tiredness ?? 0) -
+              0.10 * secondaryWeight * (interruptions ?? 0)),
       energy: arousal == null ? null : _clamp01(0.3 + 0.55 * arousal),
     );
   }
@@ -171,7 +194,7 @@ class Recommender {
     if (t.intensity != null) add(0.40, _closeness(f.intensity, t.intensity!));
     if (t.cognitiveLoad != null) add(0.25, _closeness(f.cognitiveLoad, t.cognitiveLoad!));
     if (t.energy != null) add(0.15, _closeness(f.energy, t.energy!));
-    if (t.strain != null) add(0.20, t.prefersLightTone ? (f.tone.isLight ? 1.0 : (_isDark(f.tone) ? 0.15 : 0.55)) : 0.7);
+    if (t.strain != null || t.mood != null) add(0.20, t.prefersLightTone ? (f.tone.isLight ? 1.0 : (_isDark(f.tone) ? 0.15 : 0.55)) : 0.7);
     return weight == 0 ? 0.5 : _clamp01(sum / weight);
   }
 
