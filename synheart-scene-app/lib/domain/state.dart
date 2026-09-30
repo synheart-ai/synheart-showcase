@@ -408,7 +408,41 @@ class CurrentState extends Equatable {
   /// cognitive load reads like stress; tiredness or heavy interruptions
   /// suggest an easy watch; engagement (focus with focus quality) replaces
   /// focus alone.
-  Experience? get suggestedExperience {
+  /// The axes that may drive the suggestion and the ranking. The core four
+  /// use the (temporary) "> 0" gate; the behavior axes must reach Resona's
+  /// 0.45 first. Below that they are shown — with the low-confidence tag —
+  /// but move nothing. Seen on device 2026-09-30: cognitive_load 0.06@0.09
+  /// (lower-is-more, so "94 % load") would otherwise have suggested Unwind.
+  CurrentState get drivers {
+    final drop = {
+      for (final a in HsiAxis.values)
+        if (a.isSecondary && (reading(a)?.isLowConfidence ?? false)) a,
+    };
+    if (drop.isEmpty) return this;
+    AxisReading? keep(HsiAxis a) => drop.contains(a) ? null : reading(a);
+    return CurrentState(
+      focus: focus,
+      stress: stress,
+      arousal: arousal,
+      capacity: capacity,
+      cognitiveLoad: keep(HsiAxis.cognitiveLoad),
+      mentalFatigue: keep(HsiAxis.mentalFatigue),
+      valence: keep(HsiAxis.valence),
+      sleep: keep(HsiAxis.sleep),
+      focusQuality: keep(HsiAxis.focusQuality),
+      interruptionPressure: keep(HsiAxis.interruptionPressure),
+      interactionMode: keep(HsiAxis.interactionMode),
+      source: source,
+      capturedAt: capturedAt,
+      withheld: withheld,
+      basis: basis,
+      directions: directions,
+    );
+  }
+
+  Experience? get suggestedExperience => drivers._experience;
+
+  Experience? get _experience {
     final stress = amountOf(HsiAxis.stress);
     final arousal = amountOf(HsiAxis.arousal);
     final capacity = amountOf(HsiAxis.capacity);

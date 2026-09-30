@@ -133,28 +133,28 @@ void main() {
 
   group('plain signals from the behavior axes', () {
     test('interruptions invert interruption pressure (lower is more)', () {
-      const s = CurrentState(interruptionPressure: AxisReading(0.2, 0.5), source: StateSource.synheart);
+      const s = CurrentState(interruptionPressure: AxisReading(0.2, 0.6), source: StateSource.synheart);
       expect(s.plain(PlainSignal.interruptions), closeTo(0.8, 1e-9));
       expect(s.levelOf(PlainSignal.interruptions), SignalLevel.high);
     });
 
     test('engagement is the mean of focus and focus quality', () {
-      const s = CurrentState(focus: AxisReading(0.4, 0.5), focusQuality: AxisReading(0.8, 0.5), source: StateSource.synheart);
+      const s = CurrentState(focus: AxisReading(0.4, 0.5), focusQuality: AxisReading(0.8, 0.6), source: StateSource.synheart);
       expect(s.plain(PlainSignal.engagement), closeTo(0.6, 1e-9));
     });
 
     test('tiredness is the higher of mental fatigue and poor sleep', () {
-      const s = CurrentState(mentalFatigue: AxisReading(0.3, 0.5), sleep: AxisReading(0.2, 0.5), source: StateSource.synheart);
+      const s = CurrentState(mentalFatigue: AxisReading(0.3, 0.6), sleep: AxisReading(0.2, 0.6), source: StateSource.synheart);
       expect(s.plain(PlainSignal.tiredness), closeTo(0.8, 1e-9));
     });
 
     test('mood never reads "Low"', () {
-      const s = CurrentState(valence: AxisReading(0.1, 0.5), source: StateSource.synheart);
+      const s = CurrentState(valence: AxisReading(0.1, 0.6), source: StateSource.synheart);
       expect(PlainSignal.mood.levelLabel(s.levelOf(PlainSignal.mood)!), 'Lower');
     });
 
     test('mental load includes cognitive load, which is lower-is-more', () {
-      const s = CurrentState(stress: AxisReading(0.2, 0.5), cognitiveLoad: AxisReading(0.25, 0.5), source: StateSource.synheart);
+      const s = CurrentState(stress: AxisReading(0.2, 0.5), cognitiveLoad: AxisReading(0.25, 0.6), source: StateSource.synheart);
       expect(s.plain(PlainSignal.mentalLoad), 0.75);
     });
 
@@ -166,21 +166,41 @@ void main() {
     });
   });
 
-  group('policy with the behavior axes', () {
+  group('behavior axes drive the picks only at confidence 0.45 or more', () {
+    test('seen on device: cognitive_load 0.06@0.09 shows, but suggests nothing', () {
+      const s = CurrentState(cognitiveLoad: AxisReading(0.06, 0.09), source: StateSource.synheart);
+      expect(s.levelOf(PlainSignal.mentalLoad), SignalLevel.high, reason: 'shown, with the low-confidence tag');
+      expect(s.isLowConfidenceSignal(PlainSignal.mentalLoad), isTrue);
+      expect(s.suggestedExperience, isNull);
+      expect(StateTargets.from(s).strain, isNull);
+    });
+
+    test('the core axes keep the temporary "> 0" gate', () {
+      const s = CurrentState(stress: AxisReading(0.8, 0.1), source: StateSource.synheart);
+      expect(s.suggestedExperience, Experience.unwind);
+    });
+
+    test('a confident behavior axis drives', () {
+      const s = CurrentState(interruptionPressure: AxisReading(0.1, 0.9), source: StateSource.synheart);
+      expect(s.suggestedExperience, Experience.easyWatch);
+    });
+  });
+
+    group('policy with the behavior axes', () {
     test('high cognitive load (a low score) suggests unwinding', () {
-      const s = CurrentState(cognitiveLoad: AxisReading(0.25, 0.5), source: StateSource.synheart);
+      const s = CurrentState(cognitiveLoad: AxisReading(0.25, 0.6), source: StateSource.synheart);
       expect(s.suggestedExperience, Experience.unwind);
     });
 
     test('tiredness or heavy interruptions suggest an easy watch', () {
-      const tired = CurrentState(mentalFatigue: AxisReading(0.8, 0.5), source: StateSource.synheart);
-      const interrupted = CurrentState(interruptionPressure: AxisReading(0.1, 0.5), source: StateSource.synheart);
+      const tired = CurrentState(mentalFatigue: AxisReading(0.8, 0.6), source: StateSource.synheart);
+      const interrupted = CurrentState(interruptionPressure: AxisReading(0.1, 0.6), source: StateSource.synheart);
       expect(tired.suggestedExperience, Experience.easyWatch);
       expect(interrupted.suggestedExperience, Experience.easyWatch);
     });
 
     test('focus quality lifts engagement to "stay engaged"', () {
-      const s = CurrentState(focus: AxisReading(0.55, 0.5), focusQuality: AxisReading(0.8, 0.5), source: StateSource.synheart);
+      const s = CurrentState(focus: AxisReading(0.55, 0.5), focusQuality: AxisReading(0.8, 0.6), source: StateSource.synheart);
       expect(s.suggestedExperience, Experience.stayEngaged);
     });
   });
@@ -199,13 +219,13 @@ void main() {
 
     test('behavior axes count less than the core axes', () {
       final core = StateTargets.from(const CurrentState(stress: AxisReading(0.8, 0.5), source: StateSource.synheart));
-      final behavior = StateTargets.from(const CurrentState(cognitiveLoad: AxisReading(0.2, 0.5), source: StateSource.synheart));
+      final behavior = StateTargets.from(const CurrentState(cognitiveLoad: AxisReading(0.2, 0.6), source: StateSource.synheart));
       expect(behavior.strain, lessThan(core.strain!));
       expect(behavior.strain, closeTo(secondaryWeight * 0.8, 1e-9));
     });
 
     test('a lower mood alone prefers a lighter tone', () {
-      final t = StateTargets.from(const CurrentState(valence: AxisReading(0.2, 0.5), source: StateSource.synheart));
+      final t = StateTargets.from(const CurrentState(valence: AxisReading(0.2, 0.6), source: StateSource.synheart));
       expect(t.prefersLightTone, isTrue);
     });
   });

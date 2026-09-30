@@ -97,6 +97,18 @@ capacity, stress, arousal, mental_fatigue and focus_quality higher-is-more.
 > read 0.79@1.00. Scene treats it as unavailable ("too early to tell").
 > Confirm with the runtime team.
 
+**Behavior axes drive only at confidence ≥ 0.45** (`CurrentState.drivers`).
+Below that they are shown on the card with the low-confidence tag but move
+neither the suggestion nor the ranking; the core four keep the temporary
+"> 0" gate. Reason (device, 2026-09-30): cognitive_load read 0.06@0.09 —
+"94 % load" by its lower-is-more label — and would have suggested Unwind.
+
+> **CONTRADICTION (cognitive_load direction):** the snapshot labels it
+> `lower_is_more`, but across six windows of calm browsing it read 0.00–0.29,
+> which fits higher-is-more better. Scene follows the label (evidence
+> order: the runtime's own statement over my reading of values) and, at
+> ~0.09 confidence, never lets it drive. Ask the runtime team.
+
 **Interaction mode is never ranked on.** Its HSI direction is
 `bidirectional` and neither the SDK nor the runtime docs say which end is
 passive consumption and which is active input; guessing could invert it. It

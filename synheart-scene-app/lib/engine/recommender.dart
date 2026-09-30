@@ -89,7 +89,9 @@ class StateTargets {
 
   bool get isEmpty => intensity == null && cognitiveLoad == null && energy == null;
 
-  factory StateTargets.from(CurrentState s) {
+  factory StateTargets.from(CurrentState reading) {
+    // Low-confidence behavior axes are shown but never move the ranking.
+    final s = reading.drivers;
     // Amounts, by each axis's direction — never the raw score.
     final stress = s.amountOf(HsiAxis.stress);
     final capacity = s.amountOf(HsiAxis.capacity);
