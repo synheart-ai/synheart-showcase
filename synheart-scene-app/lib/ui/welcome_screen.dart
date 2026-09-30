@@ -47,7 +47,11 @@ class WelcomeScreen extends StatelessWidget {
           const SizedBox(height: 24),
           const Row(children: [Expanded(child: Eyebrow('Scene')), SettingsButton()]),
           const SizedBox(height: 12),
-          Text('Scene by Synheart', style: t.displaySmall),
+          // The wordmark; its semantics label keeps the app's name for screen readers.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Image.asset('assets/scene_logo.png', height: 72, semanticLabel: 'Scene by Synheart'),
+          ),
           const SizedBox(height: 8),
           Container(height: 2, width: 64, color: SceneColors.accent),
           const SizedBox(height: 28),

@@ -74,6 +74,8 @@ flutter:
   # (themoviedb.org/about/logos-attribution), for the required attribution.
   assets:
     - assets/tmdb_logo.png
+    # The app's wordmark ("Cinema by synheart", v02), for the Welcome screen.
+    - assets/scene_logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

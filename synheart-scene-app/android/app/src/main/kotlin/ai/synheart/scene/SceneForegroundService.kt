@@ -59,7 +59,9 @@ class SceneForegroundService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Scene is reading your current state")
             .setContentText("Heart rate and how you use your phone, never content. Stop it in Scene's Settings.")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            // The logo's play-button "i" as a white silhouette; tinted with its red.
+            .setSmallIcon(R.drawable.ic_stat_scene)
+            .setColor(0xFFDC1929.toInt())
             .setOngoing(true)
             .setContentIntent(open)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
