@@ -22,11 +22,11 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 | Packages | `synheart_core` 0.15.0, `synheart_wear` 0.5.0 |
 | Native runtime | `synheart-core-runtime` 0.31.5 and `syni-runtime` 0.4.4, installed with `synheart install runtime`; pinned in `synheart.lock` |
 | Output | `Synheart.onStateUpdate` → `HSIState.hsi` axes `focus`, `stress`, `arousal`, `capacity`; each `{value 0–1, confidence 0–1}`. `sleep` and the digital axes are not used |
-| Sources | Apple Health (iOS) / Health Connect (Android) via `startWearCollection`; standard BLE heart-rate monitors via `BleHrmProvider`; WearSim pairing links (`ai.synheart.wearsim.signal.v1` over WebSocket) |
-| Inputs pushed | heart rate, RR intervals, vendor HRV (RMSSD); accelerometer from WearSim |
+| Sources | The Scene **Galaxy Watch** (Wear OS) app, relayed over the Wearable Data Layer (`WatchRelay`, provider `wear_os`); Apple Health (iOS) / Health Connect (Android) via `startWearCollection`; standard BLE heart-rate monitors via `BleHrmProvider`; WearSim pairing links (`ai.synheart.wearsim.signal.v1` over WebSocket) |
+| Inputs pushed | heart rate, RR intervals, vendor HRV (RMSSD); accelerometer from WearSim. The Galaxy Watch sends **heart rate only** (Health Services' `HEART_RATE_BPM` has no RR), which is Tier 3 in Synheart's research ruling on HR-only wearables: Capacity withheld, other axes capped, confidence ×0.60. On device it gave 0.00–0.17 |
 | Consent to the runtime | `biosignals: true`; `behavior`, `phoneContext`, `allowCloud`, `allowResearch`, `allowVendorSync`, `syni`: all `false` |
 | Task type | Not set. It modulates confidence, and choosing a film is not a focus task |
-| Collection window | **Only during a check-in**: from *Start check-in* until the first confident reading, a 3-minute timeout, or Cancel. Settings may connect a source to test it and stops it on leaving. Readings outside a check-in never reach the picks (RFC §5: no passive background collection) |
+| Collection window | **Only during a check-in**: from *Start check-in* until the first reading above the gate, a 3-minute timeout, or Cancel. Settings may connect a source to test it and stops it on leaving. Readings outside a check-in never reach the picks (RFC §5: no passive background collection) |
 
 > **GAP:** "Cloud upload is off" is guaranteed by the consent form above.
 > Whether `Synheart.initialize()` itself contacts a server (for example, for
@@ -38,8 +38,10 @@ Code: `lib/domain/state.dart` (axes, policy), `lib/engine/recommender.dart`
 - **Confidence (temporary, 2026-09-29):** an axis is *available* when its
   confidence is **above 0**. Before this — and in Resona — the gate was **0.45**;
   it was lowered so a heart-rate-only watch still gives a reading. Revisit it.
-- **Confidence (with the 0.45 gate):** an axis with confidence **< 0.45** is *unavailable*, never a
-  negative result (Resona's rule).
+- **Low confidence:** an available axis under Resona's **0.45** is used but
+  marked *low confidence* — on each plain signal it feeds, on the suggested
+  experience, in the state sheet, on Tonight and in *Why this movie?* ("treat
+  it lightly"). Zero confidence stays *unavailable*, never a negative result.
 - **Not enough evidence:** no axis is available. The state is not used, the
   list is taste only, and the app says so.
 - **Check-in result:** the first reading with at least one available axis
@@ -100,7 +102,7 @@ Seeded readings, labelled *Demo data — not a real reading* wherever they appea
 |---|---|---|
 | Busy day, tired evening | stress 0.78/0.8, capacity 0.30/0.7, focus 0.50/0.6, arousal 0.50/0.7 | Unwind; a meaningful change |
 | Rested and focused | focus 0.78/0.8, stress 0.20/0.75, capacity 0.80/0.7, arousal 0.50/0.7 | Stay engaged; no meaningful change, reported as such |
-| Signal too weak | focus 0.30/0.2, stress 0.90/0.3 | Not enough evidence; taste only |
+| Signal too weak | focus 0.30/0.0, stress 0.90/0.0 | Not enough evidence; taste only (zero confidence, because the gate is "above 0") |
 
 WearSim presentation cues (`ease`, `clarity`, `flow`, `signal_settling`) map
 to the matching experience with a seeded WearSim reading. While a

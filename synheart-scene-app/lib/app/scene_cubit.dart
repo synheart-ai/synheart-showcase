@@ -90,8 +90,8 @@ class SceneState extends Equatable {
 ///
 /// Stored on the device (RFC §6): the user's direct taste answers, kept
 /// separate from the derived profile, and the **derived** state snapshot
-/// (three levels, its source and time). Typed text and raw behaviour events
-/// are never stored. Reset demo clears both.
+/// (the four HSI axes with their confidence, its source and time). Raw
+/// heart-rate samples are never stored. Reset demo clears both.
 class SceneCubit extends Cubit<SceneState> {
   SceneCubit({this.prefs, DateTime Function()? clock, DemoLog? log})
       : _clock = clock ?? DateTime.now,

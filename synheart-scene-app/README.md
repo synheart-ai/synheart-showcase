@@ -21,22 +21,26 @@ current state only changes **which of the films you'd like fit this moment**.
 ## How it works
 
 ```text
-Apple Health / Health Connect / BLE heart-rate monitor / WearSim
+Galaxy Watch (HR only) / Apple Health / Health Connect / BLE strap (HR + RR) / WearSim
                          │
                          ▼
           synheart_core → native Synheart runtime
              on-device HSI: focus · stress · arousal · capacity
                          │   (each with a confidence)
                          ▼
-     confidence gate (> 0, temporary; Resona's is ≥ 0.45) → experience policy (Resona's thresholds)
+     confidence gate (> 0, temporary; Resona's is ≥ 0.45; below 0.45 is marked "low confidence")
+                         │   → experience policy (Resona's thresholds)
                          │
                          ▼
       taste 50 · state 35 · context 15  →  explain  →  user decides
 ```
 
-Missing, stale or low-confidence evidence is **unavailable**, never a negative
-judgement. Scene then ranks on taste only and says so. The full mapping is in
-[`docs/state-mapping.md`](docs/state-mapping.md).
+Missing or stale evidence, or an axis with zero confidence, is **unavailable**,
+never a negative judgement; Scene then ranks on taste only and says so.
+**Temporary (2026-09-29):** any confidence above 0 counts, so a heart-rate-only
+watch still gives a reading. Everything built from a reading under Resona's 0.45
+is marked *low confidence* on the state card, the state sheet, Tonight and Why.
+The full mapping is in [`docs/state-mapping.md`](docs/state-mapping.md).
 
 ## Screens
 
@@ -116,10 +120,11 @@ offline. Without a token, or for a film TMDB has no confident match for,
 Scene shows its typographic poster. Settings → *Film data* shows the match
 count.
 
-> TMDB's terms require attribution, which the app shows in Settings and on
-> *Why this movie?*. They also ask for the TMDB logo, which is **not added
-> yet**. TMDB is free for non-commercial use; confirm the licence before
-> sharing the demo externally (RFC §12).
+> TMDB's terms require attribution: the app shows TMDB's logo (their official
+> "Primary short (blue)" SVG from themoviedb.org/about/logos-attribution,
+> rendered to `assets/tmdb_logo.png`) with the attribution line in Settings and
+> on *Why this movie?*. TMDB is free for non-commercial use; confirm the licence
+> before sharing the demo externally (RFC §12).
 
 ## The check-in and its source
 
@@ -132,12 +137,15 @@ count.
    paste it). Settings shows the live BPM so you can test it; leaving Settings
    stops it.
 4. Tap **Start check-in** and sit back. It usually takes one to two minutes
-   (HSI windows are about 60 s), ends at the first confident reading, and
+   (HSI windows are about 60 s), ends at the first reading above the gate, and
    **stops collecting**. After 3 minutes without one it says *Not enough
    signal* — try again, use taste only, or change the source.
 
 The strap sends RR intervals as well as heart rate, so it usually gives the
-fuller reading; the watch sends heart rate only.
+fuller reading; the watch sends heart rate only. On 2026-09-29 the Galaxy Watch6
+(with a Samsung SM-A235F) gave confidences of 0.00–0.17, the level Synheart's
+research ruling on HR-only wearables allows. A failed check-in's *Details* and
+the `[scene-signal]` debug log say why a reading did not pass.
 
 ## Demo script (about 3 minutes)
 
@@ -153,10 +161,23 @@ fuller reading; the watch sends heart rate only.
    See tonight's picks: the home starts on *Based on taste* — Se7en, Ex
    Machina, Prisoners, Shutter Island, Gone Girl.
 5. Switch to **Taste + current state** (busy evening). The top five becomes
-   Glass Onion, Ocean's Eleven, The Nice Guys, Knives Out and Hot Fuzz. The
-   fifth slot is a near-tie with Catch Me If You Can. Say the line:
-   *"Your preferences haven't changed. Your context has."*
-6. Open a pick → **Why this movie?**, with its taste-only rank.
+   Glass Onion, Ocean's Eleven, The Nice Guys, Knives Out and Hot Fuzz. Say
+   the line: *"Your preferences haven't changed. Your context has."* (Tonight
+   shows it only when the change is meaningful.)
+6. Open a pick → **Why this movie?**, with its taste-only rank, the reading's
+   age, *Check in again*, and the plan's closing message.
+
+Both lists are pinned by a test (`test/engine_test.dart`). Several places are
+near-ties (Glass Onion / Ocean's Eleven by about 0.0002; places 5–8 within
+0.01), so a tag change that reorders them fails the test on purpose.
+
+**Differences from the plan's example lists (kept on purpose).** The plan's
+taste-only list has Knives Out fifth and no Ex Machina; its taste + state list
+is Knives Out, The Nice Guys, Catch Me If You Can, The Grand Budapest Hotel and
+Ocean's Eleven, with Knives Out in both lists. Scene's catalogue tags rank Ex
+Machina into the taste-only five and Glass Onion first under the busy evening,
+and the two lists share no film. The story is the same: dark thrillers first,
+then lighter films from the same taste.
 7. **What changed?** — each film's movement (↑ from #11, new), what dropped
    out, then the closing message.
 
@@ -178,6 +199,13 @@ fuller reading; the watch sends heart rate only.
 |---|---|
 | Ratings, genres, discovery (direct inputs) | Raw heart-rate or HRV samples |
 | The latest published reading: four axes with confidence, source, time | — |
+| Film data cache: TMDB posters, synopses, runtimes, trailer ids | — |
+
+**Network use.** Film data comes from TMDB (`api.themoviedb.org`, posters from
+`image.tmdb.org`) on first fetch, then from the cache, so catalogue and baseline
+flows work offline. Trailers open YouTube and need a connection. No health data
+is sent with these requests. Whether `Synheart.initialize()` contacts the network
+is not verified; the consent copy claims only that cloud upload is off.
 
 Both are cleared by **Reset demo**. The runtime is given local-only consent:
 biosignals only, and cloud, research and vendor sync off. A local event log
@@ -192,11 +220,12 @@ flutter test
 ```
 
 The HSI path is tested through a fake `SignalBackend`. The tests cover the
-confidence gate, the two-window publishing rule, liveness, WearSim link
-validation and cues, and consent before any source. They also cover the demo
-story, all three seeded scenarios, the accessibility guidelines and 160% text.
-Wearables, HealthKit, Health Connect and the native runtime need a physical
-device.
+confidence gate and the low-confidence marker, publishing the first reading
+above the gate, check-in diagnostics, liveness, WearSim link validation and
+cues, and consent before any source. They also cover the demo story and its
+pinned lists, all three seeded scenarios, the accessibility guidelines and 160%
+text. On a device, only the Galaxy Watch path has been run so far (2026-09-29);
+HealthKit, Health Connect and the BLE strap are untested on hardware.
 
 ## Build log
 

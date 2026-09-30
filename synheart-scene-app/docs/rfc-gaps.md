@@ -34,8 +34,8 @@ Checked 2026-09-28 against [`rfc.md`](rfc.md). The first build followed the demo
 | Platform / framework | Flutter, iOS + Android |
 | SDK interaction and outputs | `synheart_core` 0.15.0 HSI axes (focus, stress, arousal, capacity) with confidence, from wearable sources; see [state-mapping.md](state-mapping.md) |
 | Real SDK results, seeded data, or both | Both; seeded ones are labelled **Demo data** everywhere they appear |
-| Processing, storage, retention | HSI is computed on device, with cloud upload off. Answers and the latest reading are kept in app storage until **Reset demo**. Raw samples are never stored |
-| Tagging and media rights owner | **Open.** Tags are my curation; posters are typographic (no artwork) |
+| Processing, storage, retention | HSI is computed on device, with cloud upload off. Answers, the latest reading and the TMDB film-data cache are kept in app storage until **Reset demo** (the cache survives it). Raw samples are never stored |
+| Tagging and media rights owner | **Open.** Tags are my curation. Posters, synopses and trailers come from TMDB (attribution + official logo shown; licence for external demos unconfirmed); typographic posters without a token |
 | Audience and date | **Open** |
 
 ## Update 2026-09-28 — HSI, as in Resona
@@ -70,18 +70,47 @@ A review against both documents found three drifts from the HSI move, now fixed
 Also restored: Movie DNA percentages (plan §3). The RFC's no-percentage rule
 is about the match score.
 
+## Recheck 2026-09-30 — after TMDB, the Galaxy Watch and the "> 0" gate
+
+A fresh read of the demo plan (PDF) and this RFC against the code at `25ddebb`.
+The 17 fixes above still hold. Found and fixed in `d6d7231`:
+
+| RFC / plan | Finding | Fix |
+|---|---|---|
+| §8, §9.4 | The gate was lowered to "> 0" (2026-09-29, product decision) so the heart-rate-only watch gives a reading. Readings at 0.01–0.17 then drove firm labels ("Engagement: Low", "Easy watch"), while the copy said uncertain readings were left out | Kept the gate; readings under Resona's 0.45 are marked *low confidence* on the state card, sheet, Tonight and Why; copy corrected |
+| §4 override | Explicit intent led the ranking but not the Why headline | Headline follows the chosen intent |
+| §10 | Tonight showed the demo line even for *Rested and focused*, where Compare says nothing meaningful changed | Line only when the comparison is meaningful |
+| §8; plan §10 | Why had no snapshot age or new check-in; the closing message only appeared on Compare | Both added to Why |
+| §6 | Consent said "heart rate and HRV" (the watch sends HR only) and nothing about TMDB / YouTube network use | Consent and Settings copy corrected; README network section |
+| §12 | TMDB logo missing | Official logo with the attribution in Settings and Why |
+| plan §6 | Demo lists matched the README but no test pinned them; near-ties | Exact top five pinned by a test; differences from the plan documented in the README |
+
+Corrections to lines above that are now out of date: staleness is **30 min**
+(`CurrentState.freshFor`), not 2 h (row 4); row 3's "0.4.1 source, no HTTP
+client" referred to the old typing SDK — the app now calls TMDB, and the watch
+relay's routing is not verified; "Low confidence means unavailable" (HSI
+update) is replaced by the temporary gate and the marker.
+
+Left as is, and documented: watched films are always excluded, not optionally
+(§7); there is no check for incomplete catalogue entries (§7) — all 45 are
+hand-curated.
+
 ## Still open, and not code
 
+- **The confidence gate:** "> 0" is temporary. With it, a heart-rate-only
+  source always "passes" and the live *Not enough signal* path needs exactly
+  zero confidence. Decide before any external demo (see state-mapping.md).
 - **§6 SDK contract:** Engineering and Research have not agreed the fields,
   quality rules or freshness. The build documents what it uses in
   [state-mapping.md](state-mapping.md) and marks every label provisional.
 - **§10 audience check:** whether viewers can say why the top pick changed is a
   rehearsal question. The event log helps, but only a rehearsal answers it.
-- **Device run:** wearables, HealthKit, Health Connect and the native runtime
-  have been built into the app but not yet run on a phone.
+- **Device run:** the Galaxy Watch6 path ran on a Samsung SM-A235F on
+  2026-09-29 (live heart rate; check-in succeeds under the "> 0" gate). The BLE
+  strap, Health Connect, HealthKit and iOS are not yet run on hardware.
 - **Network during `Synheart.initialize()`:** not verified; the consent copy
   claims only "cloud upload is off".
-- **Trailers:** no trailer links (RFC §3 makes them optional).
+- **Trailers:** YouTube links from TMDB; they need a connection (§9.10).
 
 ## Plan vs RFC differences kept on purpose
 

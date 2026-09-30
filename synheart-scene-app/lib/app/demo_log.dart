@@ -21,8 +21,9 @@ enum DemoEvent {
 
 /// A local, in-memory log of demo events for rehearsal review.
 ///
-/// Fields carry only enum names, counts and catalogue film ids — never typed
-/// text, typing metrics or anything else from the check-in (RFC §10). Nothing
+/// Fields carry only enum names, counts and catalogue film ids — never
+/// heart-rate values, axis readings or anything else from the check-in
+/// (RFC §10). Nothing
 /// is stored or sent; in debug builds each event is printed with the
 /// `[scene-event]` prefix so it shows in `flutter run` / device logs.
 class DemoLog {
