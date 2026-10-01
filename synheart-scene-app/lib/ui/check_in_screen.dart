@@ -11,6 +11,7 @@ import '../app/state_engine.dart';
 import '../data/demo_scenarios.dart';
 import 'check_in_parts.dart';
 import 'routes.dart';
+import 'settings_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -142,27 +143,22 @@ class _CheckInScreenState extends State<CheckInScreen> {
           _ => 'Synheart is reading your rhythm on this device.',
         };
         return [
-          const Eyebrow('Your present moment'),
-          const SizedBox(height: 6),
-          Text('Sit back for a minute', style: t.headlineSmall),
           const SizedBox(height: 8),
-          Text('This usually takes one to two minutes.', style: t.bodyLarge?.copyWith(color: SceneColors.sage)),
-          const SizedBox(height: 28),
-          Center(
-            child: Column(children: [
-              const Icon(Icons.favorite, color: SceneColors.warm, size: 40),
-              const SizedBox(height: 6),
-              Text(engine.isLive && engine.heartRate != null ? '${engine.heartRate!.round()} BPM' : 'Waiting for heart rate…',
-                  style: t.headlineSmall),
-              const SizedBox(height: 4),
-              Text('${engine.chosenName} · $mmss', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-            ]),
+          _HeartBadge(label: engine.isLive && engine.heartRate != null ? '${engine.heartRate!.round()}' : null),
+          const SizedBox(height: 18),
+          Text('Sit back for a minute', style: t.displaySmall?.copyWith(fontSize: 30), textAlign: TextAlign.center),
+          const SizedBox(height: 6),
+          Text(
+            engine.isLive && engine.heartRate != null ? 'BPM · ${engine.chosenName} · $mmss' : 'Waiting for heart rate… · $mmss',
+            style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
-          const LinearProgressIndicator(),
+          const SizedBox(height: 22),
+          ClipRRect(borderRadius: BorderRadius.circular(4), child: const LinearProgressIndicator(minHeight: 4)),
           const SizedBox(height: 12),
           Text(status, style: t.bodyMedium, textAlign: TextAlign.center),
-          const SizedBox(height: 20),
+          Text('This usually takes one to two minutes.', style: t.bodySmall, textAlign: TextAlign.center),
+          const SizedBox(height: 22),
           OutlinedButton(onPressed: () => _engine.cancelCheckIn(), child: const Text('Cancel check-in')),
         ];
       case CheckInPhase.notEnoughSignal || CheckInPhase.failed:
@@ -183,29 +179,42 @@ class _CheckInScreenState extends State<CheckInScreen> {
         ];
       case CheckInPhase.idle || CheckInPhase.done:
         final ready = engine.chosenSource != null;
+        final live = engine.isLive && engine.heartRate != null;
         return [
-          const Eyebrow('Your present moment'),
-          const SizedBox(height: 6),
-          Text('A one-minute check-in', style: t.headlineSmall),
           const SizedBox(height: 8),
-          Text(
-            'What you usually enjoy is not necessarily what fits every evening. Synheart reads your wearable briefly, '
-            'on this device, to add that context.',
-            style: t.bodyLarge,
-          ),
+          const _HeartBadge(),
           const SizedBox(height: 18),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.watch_outlined, color: SceneColors.ink),
-              title: Text(ready ? engine.chosenName! : 'No source chosen yet'),
-              subtitle: Text(ready
-                  ? 'Read only for this check-in'
-                  : 'Choose a Galaxy Watch, a heart-rate strap or Apple Health / Health Connect.'),
+          Text('A one-minute check-in', style: t.displaySmall?.copyWith(fontSize: 30), textAlign: TextAlign.center),
+          const SizedBox(height: 10),
+          Text(
+            'What you usually enjoy is not necessarily what fits every evening. Scene already reads your state on this '
+            'device; a check-in waits for the next reading and shows you what it sees.',
+            style: t.bodyLarge?.copyWith(color: SceneColors.body),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SettingsRow(
+              icon: Icons.watch_outlined,
+              iconColor: live ? SceneColors.accent : null,
+              title: ready ? engine.chosenName! : 'No source chosen yet',
+              subtitle: ready
+                  ? (live ? 'Signal arriving · ${engine.heartRate!.round()} BPM' : 'Waiting for a signal…')
+                  : 'Choose a Galaxy Watch, a heart-rate strap or Apple Health / Health Connect.',
+              trailing: TextButton(
+                onPressed: () => context.push(Routes.settings),
+                child: Text(ready ? 'Change' : 'Choose a source'),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          if (ready) FilledButton(onPressed: () => _engine.startCheckIn(), child: const Text('Start check-in')),
-          changeSource(),
+          const SizedBox(height: 16),
+          if (ready)
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: SceneColors.red, foregroundColor: Colors.white),
+              onPressed: () => _engine.startCheckIn(),
+              child: const Text('Start check-in'),
+            ),
           TextButton(onPressed: _skip, child: const Text('Skip — use my taste only')),
         ];
     }
@@ -214,20 +223,48 @@ class _CheckInScreenState extends State<CheckInScreen> {
   List<Widget> _demo(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return [
-      Text('Presenting? Use demo data instead', style: t.titleMedium),
+      Text('Presenting? Use demo data instead', style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
       const SizedBox(height: 4),
       Text('Seeded readings, labelled as demo data wherever they appear.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-      const SizedBox(height: 10),
-      for (final d in DemoScenario.values)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: OutlinedButton(
-            onPressed: () => _useDemo(d),
-            child: Text('Demo data: ${d.title} — ${d.purpose.toLowerCase()}', textAlign: TextAlign.center),
-          ),
-        ),
+      const SizedBox(height: 12),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Column(children: [
+          for (final (i, d) in DemoScenario.values.indexed) ...[
+            if (i > 0) const Divider(height: 1, thickness: 1, color: Color(0xFF2E2E2E)),
+            SettingsRow(icon: Icons.play_circle_outline, title: 'Demo data: ${d.title}', subtitle: d.purpose, onTap: () => _useDemo(d)),
+          ],
+        ]),
+      ),
     ];
   }
+}
+
+/// The check-in's mark: a red heart in a red ring, with the live BPM inside
+/// while reading.
+class _HeartBadge extends StatelessWidget {
+  const _HeartBadge({this.label});
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(colors: [Color(0xFF6B0F16), Color(0xFF1A0507)]),
+            border: Border.all(color: SceneColors.red, width: 2),
+            boxShadow: const [BoxShadow(color: Color(0x66DC1929), blurRadius: 36)],
+          ),
+          child: label == null
+              ? const Icon(Icons.favorite, size: 54, color: SceneColors.red)
+              : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.favorite, size: 26, color: SceneColors.red),
+                  Text(label!, style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w900, height: 1)),
+                ]),
+        ),
+      );
 }
 
 /// What the check-in received, so "Not enough signal" can be explained on

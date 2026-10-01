@@ -132,7 +132,8 @@ void main() {
     expect(find.text('Sit back for a minute'), findsOneWidget);
     fake.heartRateCtl.add(66);
     await tester.pump();
-    expect(find.text('66 BPM'), findsOneWidget);
+    expect(find.text('66'), findsOneWidget); // the live BPM in the heart badge
+    expect(find.textContaining('BPM · Polar H10'), findsOneWidget);
 
     fake.emit(const CurrentState(stress: AxisReading(0.8, 0.8), capacity: AxisReading(0.3, 0.7), source: StateSource.synheart));
     await tester.pumpAndSettle();
