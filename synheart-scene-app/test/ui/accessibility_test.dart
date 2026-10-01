@@ -89,6 +89,23 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('building the profile: the rating step and the genre tiles meet the guidelines', (tester) async {
+    final handle = tester.ensureSemantics();
+    await start(tester);
+    await tester.tap(find.text('Build my movie profile'));
+    await tester.pumpAndSettle();
+    await expectGuidelines(tester); // a film to rate, with the round thumbs
+    await tester.tap(find.text('Love it'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip the rest'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Thriller'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 picked'), findsOneWidget);
+    await expectGuidelines(tester); // genre tiles and the slider
+    handle.dispose();
+  });
+
   testWidgets('large text (160%) lays out without overflow through the demo', (tester) async {
     await start(tester, textScale: 1.6);
     await toTonight(tester);

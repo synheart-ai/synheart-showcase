@@ -58,6 +58,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
+/// One film at a time, as a streaming app's "rate what you've seen": the
+/// poster large, then Not for me / Like it / Love it as round thumbs, and
+/// Haven't seen it.
 class _RateFilm extends StatelessWidget {
   const _RateFilm({required this.index, required this.onAnswer, required this.onSkipFilm, required this.onSkipRest});
 
@@ -77,20 +80,16 @@ class _RateFilm extends StatelessWidget {
       bottom: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Expanded(child: _AnswerButton(Rating.love, onAnswer, icon: Icons.favorite)),
-              const SizedBox(width: 10),
-              Expanded(child: _AnswerButton(Rating.like, onAnswer, icon: Icons.thumb_up_alt_outlined)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(child: _AnswerButton(Rating.notForMe, onAnswer, icon: Icons.thumb_down_alt_outlined)),
-              const SizedBox(width: 10),
-              Expanded(child: _AnswerButton(Rating.notSeen, onAnswer, icon: Icons.visibility_off_outlined)),
-            ],
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: _Thumb(Rating.notForMe, onAnswer, icon: Icons.thumb_down_alt_outlined)),
+            Expanded(child: _Thumb(Rating.like, onAnswer, icon: Icons.thumb_up_alt_outlined)),
+            Expanded(child: _Thumb(Rating.love, onAnswer, icon: Icons.favorite, highlight: true)),
+          ]),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => onAnswer(Rating.notSeen),
+            icon: const Icon(Icons.visibility_off_outlined),
+            label: Text(Rating.notSeen.label),
           ),
           Row(
             children: [
@@ -106,18 +105,30 @@ class _RateFilm extends StatelessWidget {
         ],
       ),
       children: [
-        Text('${index + 1} of $total', style: t.labelSmall),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(value: index / total, minHeight: 4, backgroundColor: SceneColors.line, color: SceneColors.red),
+        Row(children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(value: index / total, minHeight: 4, backgroundColor: SceneColors.line, color: SceneColors.red),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text('${index + 1} of $total', style: t.labelSmall),
+        ]),
+        const SizedBox(height: 22),
+        Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: const [BoxShadow(color: Color(0x99DC1929), blurRadius: 40, spreadRadius: -12)],
+            ),
+            child: Poster(film, width: 200, height: 296, radius: 10),
+          ),
         ),
-        const SizedBox(height: 28),
-        Center(child: Poster(film, width: 180, height: 260)),
         const SizedBox(height: 20),
         Text(film.title, style: t.headlineSmall, textAlign: TextAlign.center),
         const SizedBox(height: 4),
-        Text('${film.year} · ${film.genres.map((g) => g.label).join(' · ')}', style: t.bodyMedium?.copyWith(color: SceneColors.sage), textAlign: TextAlign.center),
+        Text('${film.year}  ·  ${film.genres.map((g) => g.label).join(', ')}', style: t.bodyMedium?.copyWith(color: SceneColors.sage), textAlign: TextAlign.center),
         const SizedBox(height: 10),
         Text(film.logline, style: t.bodyLarge, textAlign: TextAlign.center),
       ],
@@ -125,29 +136,43 @@ class _RateFilm extends StatelessWidget {
   }
 }
 
-class _AnswerButton extends StatelessWidget {
-  const _AnswerButton(this.rating, this.onAnswer, {required this.icon});
+/// A round thumb with its label under it.
+class _Thumb extends StatelessWidget {
+  const _Thumb(this.rating, this.onAnswer, {required this.icon, this.highlight = false});
 
   final Rating rating;
   final ValueChanged<Rating> onAnswer;
   final IconData icon;
+  final bool highlight;
 
   @override
-  Widget build(BuildContext context) {
-    final primary = rating == Rating.love || rating == Rating.like;
-    final child = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 6),
-        // Flexible: "Haven't seen" overflowed at 390 pt phone width.
-        Flexible(child: Text(rating.label, textAlign: TextAlign.center)),
-      ],
-    );
-    return primary
-        ? FilledButton(onPressed: () => onAnswer(rating), child: child)
-        : OutlinedButton(onPressed: () => onAnswer(rating), child: child);
-  }
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: rating.label,
+        child: ExcludeSemantics(
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: () => onAnswer(rating),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: highlight ? SceneColors.red : SceneColors.panel,
+                    border: Border.all(color: highlight ? SceneColors.red : const Color(0xFF555555), width: 1.5),
+                  ),
+                  child: Icon(icon, size: 30, color: Colors.white),
+                ),
+                const SizedBox(height: 6),
+                Text(rating.label, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleSmall),
+              ]),
+            ),
+          ),
+        ),
+      );
 }
 
 class _Preferences extends StatelessWidget {
@@ -160,6 +185,7 @@ class _Preferences extends StatelessWidget {
 
     return PageBody(
       bottom: FilledButton(
+        style: FilledButton.styleFrom(backgroundColor: SceneColors.red, foregroundColor: Colors.white),
         // Every preference is optional (RFC §9.1): the baseline is built from
         // whatever was answered.
         onPressed: () {
@@ -170,20 +196,22 @@ class _Preferences extends StatelessWidget {
         child: const Text('See my Movie DNA'),
       ),
       children: [
-        const PreferenceControls(),
+        // Before the picks, so it is read first.
         if (answers.answeredCount == 0 && answers.preferredGenres.isEmpty) ...[
-          const SizedBox(height: 20),
           const Callout(
             child: Text('You have not rated any films or picked genres, so your baseline will be broad. You can edit it later from Movie DNA.'),
           ),
+          const SizedBox(height: 20),
         ],
+        const PreferenceControls(),
       ],
     );
   }
 }
 
-/// Favourite genres and Familiar ↔ Surprise me — used in onboarding and when
-/// editing the baseline.
+/// Favourite genres as poster tiles (a red border and check when picked) and
+/// Familiar ↔ Surprise me — used in onboarding and when editing the
+/// baseline.
 class PreferenceControls extends StatelessWidget {
   const PreferenceControls({super.key});
 
@@ -192,37 +220,61 @@ class PreferenceControls extends StatelessWidget {
     Genre.action, Genre.adventure, Genre.romance, Genre.horror, Genre.animation, Genre.documentary,
   ];
 
+  /// A film that stands for the genre on its tile: the first catalogue film
+  /// whose first genre it is, else any film with it.
+  static Film? _face(Genre g) {
+    for (final f in candidateFilms) {
+      if (f.genres.first == g) return f;
+    }
+    for (final f in allFilms) {
+      if (f.genres.contains(g)) return f;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final answers = context.select((SceneCubit c) => c.state.answers);
     final cubit = context.read<SceneCubit>();
+    final picked = answers.preferredGenres.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Which genres do you usually reach for?', style: t.titleLarge),
+        Text('Which genres do you usually reach for?', style: t.headlineSmall),
         const SizedBox(height: 4),
-        Text('Pick as many as you like — or none.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+        Text(picked == 0 ? 'Pick as many as you like — or none.' : '$picked picked', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
         const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final g in _pickable)
-              FilterChip(label: Text(g.label), selected: answers.preferredGenres.contains(g), onSelected: (_) => cubit.toggleGenre(g)),
-          ],
-        ),
+        LayoutBuilder(builder: (context, c) {
+          final w = (c.maxWidth - 16) / 3;
+          return Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final g in _pickable) _GenreTile(genre: g, film: _face(g), width: w, selected: answers.preferredGenres.contains(g), onTap: () => cubit.toggleGenre(g)),
+          ]);
+        }),
         const SizedBox(height: 32),
-        Text('Familiar or surprising?', style: t.titleLarge),
+        Text('Familiar or surprising?', style: t.headlineSmall),
         const SizedBox(height: 4),
         Text('How far should Scene stray from what you already know?', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-        Slider(
-          value: answers.discovery,
-          onChanged: cubit.setDiscovery,
-          divisions: 4,
-          label: _discoveryLabel(answers.discovery),
-          semanticFormatterCallback: _discoveryLabel,
+        const SizedBox(height: 14),
+        Center(child: Text(_discoveryLabel(answers.discovery), style: t.titleLarge?.copyWith(color: SceneColors.accent))),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: SceneColors.red,
+            inactiveTrackColor: SceneColors.line,
+            thumbColor: Colors.white,
+            overlayColor: SceneColors.red.withValues(alpha: 0.2),
+            activeTickMarkColor: Colors.white54,
+            inactiveTickMarkColor: Colors.white24,
+            trackHeight: 4,
+            showValueIndicator: ShowValueIndicator.never,
+          ),
+          child: Slider(
+            value: answers.discovery,
+            onChanged: cubit.setDiscovery,
+            divisions: 4,
+            semanticFormatterCallback: _discoveryLabel,
+          ),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -242,4 +294,65 @@ class PreferenceControls extends StatelessWidget {
           : v < 0.75
               ? 'A bit of both'
               : 'Surprise me';
+}
+
+class _GenreTile extends StatelessWidget {
+  const _GenreTile({required this.genre, required this.film, required this.width, required this.selected, required this.onTap});
+
+  final Genre genre;
+  final Film? film;
+  final double width;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = width * 1.25;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: genre.label,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: width,
+            height: h,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: selected ? SceneColors.red : Colors.transparent, width: 3),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Stack(fit: StackFit.expand, children: [
+                if (film != null) FittedBox(fit: BoxFit.cover, clipBehavior: Clip.hardEdge, child: Poster(film!, width: width, height: width * 1.48, radius: 0)),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black.withValues(alpha: selected ? 0.15 : 0.35), Colors.black.withValues(alpha: 0.92)],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 8,
+                  right: 8,
+                  bottom: 8,
+                  child: Text(genre.label, maxLines: 2, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                ),
+                if (selected)
+                  const Positioned(
+                    top: 6,
+                    right: 6,
+                    child: CircleAvatar(radius: 13, backgroundColor: SceneColors.red, child: Icon(Icons.check, size: 18, color: Colors.white)),
+                  ),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
