@@ -27,6 +27,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Finder pill() => find.descendant(of: find.byType(AppBar), matching: find.byType(ActionChip));
+  Finder inPill(String text) => find.descendant(of: find.byType(AppBar), matching: find.text(text));
+  Finder page() => find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+
+  /// Home's state banner, where the check-in starts without a reading.
+  Future<void> scrollToBanner(WidgetTester tester, Finder f) async {
+    await tester.scrollUntilVisible(f, 300, scrollable: page());
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> startCheckIn(WidgetTester tester) async {
+    await scrollToBanner(tester, find.text('Connect your watch'));
+    await tester.tap(find.text('Connect your watch'));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> openSettings(WidgetTester tester) async {
     await tester.tap(appBarSettings());
     await tester.pumpAndSettle();
@@ -58,9 +74,10 @@ void main() {
 
   testWidgets('with no state the pill and sheet say so, and picks are taste only', (tester) async {
     await toTonight(tester);
-    expect(find.text('No state'), findsOneWidget); // the pill
-    expect(find.textContaining('Taste only. No current state was used'), findsOneWidget);
-    await tester.tap(find.byType(ActionChip).first);
+    expect(inPill('No state'), findsOneWidget);
+    await scrollToBanner(tester, find.text('Picks that fit your state'));
+    expect(find.textContaining('Until then, picks follow your taste.'), findsOneWidget);
+    await tester.tap(pill());
     await tester.pumpAndSettle();
     expect(find.text('CURRENT STATE'), findsOneWidget);
     expect(find.textContaining('Connect a wearable in Settings'), findsOneWidget);
@@ -78,8 +95,7 @@ void main() {
   testWidgets('the full check-in: consent, choose a source, read; collection continues (2026-09-30)', (tester) async {
     await toTonight(tester);
     tester.view.physicalSize = const Size(1170, 7000); // whole screens, no scrolling
-    await tester.tap(find.text('Do a Synheart check-in'));
-    await tester.pumpAndSettle();
+    await startCheckIn(tester);
 
     // Consent first; nothing has started.
     expect(find.text('Let Scene read your current state'), findsOneWidget);
@@ -133,14 +149,13 @@ void main() {
 
     await tester.tap(find.text("See tonight's picks"));
     await tester.pumpAndSettle();
-    expect(find.text('Unwind'), findsOneWidget); // the pill
+    expect(inPill('Unwind'), findsOneWidget);
   });
 
   testWidgets('demo data on the check-in shows the plan\'s example card (§4)', (tester) async {
     await toTonight(tester);
     tester.view.physicalSize = const Size(1170, 7000);
-    await tester.tap(find.text('Do a Synheart check-in'));
-    await tester.pumpAndSettle();
+    await startCheckIn(tester);
     await tester.tap(find.textContaining('Demo data: Busy day'));
     await tester.pumpAndSettle();
     expect(find.text('DEMO DATA — NOT A REAL READING'), findsOneWidget);
@@ -168,8 +183,9 @@ void main() {
   testWidgets('a demo scenario is labelled demo data everywhere', (tester) async {
     await toTonight(tester);
     await useDemo(tester, 'Busy day');
-    expect(find.text('Unwind'), findsOneWidget);
-    await tester.tap(find.byType(ActionChip).first);
+    expect(inPill('Unwind'), findsOneWidget);
+    await scrollToBanner(tester, find.text('RIGHT NOW · DEMO DATA'));
+    await tester.tap(pill());
     await tester.pumpAndSettle();
     expect(find.textContaining('Demo data — not a real reading'), findsOneWidget);
   });
@@ -177,15 +193,15 @@ void main() {
   testWidgets('a low-confidence reading means taste only, said plainly (RFC §10)', (tester) async {
     await toTonight(tester);
     await useDemo(tester, 'Signal too weak');
-    expect(find.textContaining('not enough signal yet'), findsOneWidget);
-    expect(find.text('Do a Synheart check-in'), findsOneWidget);
+    await scrollToBanner(tester, find.textContaining('not enough signal yet'));
+    expect(find.text('Listening…'), findsOneWidget);
+    expect(find.text('Connect your watch'), findsOneWidget);
   });
 
   testWidgets('"not enough signal" is logged once, although readings keep arriving', (tester) async {
     await toTonight(tester);
     tester.view.physicalSize = const Size(1170, 7000);
-    await tester.tap(find.text('Do a Synheart check-in'));
-    await tester.pumpAndSettle();
+    await startCheckIn(tester);
     await tester.tap(find.text('I agree — continue'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose a source'));

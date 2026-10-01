@@ -87,7 +87,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   void _skip() {
     _log.record(DemoEvent.checkInSkipped);
     context.read<SceneCubit>().clearCurrentState();
-    context.pushReplacement(Routes.tonight);
+    context.go(Routes.tonight);
   }
 
   void _useDemo(DemoScenario d) {

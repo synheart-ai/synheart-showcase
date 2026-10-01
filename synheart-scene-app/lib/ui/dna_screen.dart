@@ -45,7 +45,7 @@ class DnaScreen extends StatelessWidget {
       body: PageBody(
         bottom: Column(mainAxisSize: MainAxisSize.min, children: [
           FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Start my Synheart check-in')),
-          TextButton(onPressed: () => context.push(Routes.tonight), child: const Text("Skip — see tonight's picks")),
+          TextButton(onPressed: () => context.go(Routes.tonight), child: const Text("Skip — see tonight's picks")),
         ]),
         children: [
           const Eyebrow('Your baseline'),

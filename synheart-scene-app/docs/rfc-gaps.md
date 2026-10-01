@@ -110,6 +110,23 @@ collection without a separate product and privacy review."** The consent card,
 Settings and README now say what is collected and when (RFC §6). The privacy
 review itself is **not done** — needed before any external demo.
 
+## Decision 2026-10-01 — a state-aware cinema app, no comparison
+
+Product decision (user): a state-aware streaming app in the style of the
+big ones, with no comparison between taste and taste + state. Scene now copies a mainstream
+cinema app's layout — Home, Clips, Search, My Scene tabs, a title page — in
+its own red, mark and TMDB art, and **every list uses the current state
+whenever a usable reading exists**. Removed: the *Based on taste ⇄ Taste +
+current state* toggle, the *What changed?* screen and the demo line.
+
+> **CONTRADICTION:** plan §5–§6 and RFC §4.8 / §10 build the demo around the
+> side-by-side change ("Your preferences haven't changed. Your context
+> has.", rank movement, an honest no-change). That story is no longer shown
+> in the app. **Kept:** the three-part *Why It Fits* with the taste-only
+> rank ("On taste alone it was #n") — the closest remaining evidence of what
+> the state changed; the honest fallbacks (no reading, too old, too weak)
+> in the state banner; `compareRankings` in the engine, tested.
+
 ## Still open, and not code
 
 - **Privacy review for continuous collection** (RFC §5), and the Play policy

@@ -10,12 +10,11 @@ enum DemoEvent {
   checkInFailed,
   demoScenarioUsed,
   recommendationsViewed,
-  comparisonToggled,
-  comparisonViewed,
   explanationViewed,
   intentChanged,
   filmSelected,
   feedbackGiven,
+  myListChanged,
   demoReset,
 }
 

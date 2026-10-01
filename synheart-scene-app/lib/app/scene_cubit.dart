@@ -8,7 +8,6 @@ import '../domain/film.dart';
 import 'demo_log.dart';
 import '../domain/state.dart';
 import '../domain/taste.dart';
-import '../engine/recommender.dart';
 import '../engine/taste_builder.dart';
 
 /// Optional reasons after "Not really" / "Wrong for me" (plan §7).
@@ -36,8 +35,8 @@ class SceneState extends Equatable {
     this.profile,
     this.current,
     this.viewing = const ViewingContext(),
-    this.mode = RecommendationMode.tasteOnly,
     this.feedback = const {},
+    this.myList = const {},
   });
 
   final TasteAnswers answers;
@@ -49,11 +48,11 @@ class SceneState extends Equatable {
   final CurrentState? current;
   final ViewingContext viewing;
 
-  /// Tonight's Picks starts on taste only, so the demo can reveal the change.
-  final RecommendationMode mode;
-
   /// Film id → feedback, with optional reasons.
   final Map<String, (Feedback, Set<String>)> feedback;
+
+  /// Films saved with "+ My List", newest first.
+  final Set<String> myList;
 
   bool get hasProfile => profile != null;
 
@@ -70,20 +69,20 @@ class SceneState extends Equatable {
     CurrentState? current,
     bool clearCurrent = false,
     ViewingContext? viewing,
-    RecommendationMode? mode,
     Map<String, (Feedback, Set<String>)>? feedback,
+    Set<String>? myList,
   }) =>
       SceneState(
         answers: answers ?? this.answers,
         profile: clearProfile ? null : (profile ?? this.profile),
         current: clearCurrent ? null : (current ?? this.current),
         viewing: viewing ?? this.viewing,
-        mode: mode ?? this.mode,
         feedback: feedback ?? this.feedback,
+        myList: myList ?? this.myList,
       );
 
   @override
-  List<Object?> get props => [answers, profile, current, viewing, mode, feedback];
+  List<Object?> get props => [answers, profile, current, viewing, feedback, myList];
 }
 
 /// The app's single source of truth.
@@ -107,6 +106,7 @@ class SceneCubit extends Cubit<SceneState> {
   final DemoLog log;
   static const _key = 'scene.tasteAnswers.v1';
   static const _stateKey = 'scene.stateSnapshot.v1';
+  static const _listKey = 'scene.myList.v1';
 
   DateTime now() => _clock();
 
@@ -121,6 +121,19 @@ class SceneCubit extends Cubit<SceneState> {
   void _restore() {
     _restoreAnswers();
     _restoreState();
+    final list = prefs?.getStringList(_listKey);
+    if (list != null) emit(state.copyWith(myList: {...list}));
+  }
+
+  bool inMyList(String filmId) => state.myList.contains(filmId);
+
+  /// "+ My List" / "✓ My List".
+  void toggleMyList(String filmId) {
+    final on = !inMyList(filmId);
+    final list = on ? {filmId, ...state.myList} : ({...state.myList}..remove(filmId));
+    emit(state.copyWith(myList: list));
+    prefs?.setStringList(_listKey, [...list]);
+    log.record(DemoEvent.myListChanged, {'film': filmId, 'added': '$on'});
   }
 
   void _restoreAnswers() {
@@ -221,13 +234,8 @@ class SceneCubit extends Cubit<SceneState> {
 
   /// Declined or skipped check-in: no state, taste only (RFC §9.7).
   void clearCurrentState() {
-    emit(state.copyWith(clearCurrent: true, mode: RecommendationMode.tasteOnly));
+    emit(state.copyWith(clearCurrent: true));
     _persistState();
-  }
-
-  void setMode(RecommendationMode m) {
-    if (m != state.mode) log.record(DemoEvent.comparisonToggled, {'mode': m.name});
-    emit(state.copyWith(mode: m));
   }
 
   void setIntent(EveningIntent? intent) {
@@ -247,6 +255,7 @@ class SceneCubit extends Cubit<SceneState> {
   void reset() {
     prefs?.remove(_key);
     prefs?.remove(_stateKey);
+    prefs?.remove(_listKey);
     emit(const SceneState());
     log.record(DemoEvent.demoReset);
   }

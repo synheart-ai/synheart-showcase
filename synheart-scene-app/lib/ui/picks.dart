@@ -25,8 +25,10 @@ class Picks {
   /// A fresh reading Scene can rank with.
   bool get hasUsableState => state != null && state!.hasEvidence;
 
-  /// The mode actually in effect: taste + state needs a usable reading.
-  RecommendationMode get mode => hasUsableState ? s.mode : RecommendationMode.tasteOnly;
+  /// A state-aware home: whenever a usable reading exists the picks use it;
+  /// otherwise taste only. There is no taste-only toggle any more (product
+  /// decision, 2026-10-01).
+  RecommendationMode get mode => hasUsableState ? RecommendationMode.tastePlusState : RecommendationMode.tasteOnly;
 
   bool get withState => mode == RecommendationMode.tastePlusState;
 

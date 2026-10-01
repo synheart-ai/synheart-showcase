@@ -51,11 +51,21 @@ The full mapping is in [`docs/state-mapping.md`](docs/state-mapping.md).
 | Movie DNA | The baseline (genre percentages and qualities); edit it or reset the demo |
 | **Synheart check-in** | Consent, then "Sit back for a minute" until the next Synheart reading. Optional: after consent Scene collects continuously and the state updates live |
 | Current State | The plan's card: Energy, Mental load, Engagement, Suggested experience; the suggested evening to accept, change or skip |
-| **Home (Tonight)** | The Taste only ⇄ Taste + current state toggle, a hero for the #1 pick, tonight's top five, Choose My Evening, then browse rows |
+| **Home** | A state-aware cinema home: the red mark and *Home*; chips (Movies, My List, Categories ▾ with genres and *Tonight I want…*); a hero for the #1 pick with **Play** (the trailer) and **+ My List**; *Top Picks for Right Now* with red badges; the **state banner** — tinted by the current state, saying what Synheart sees and three picks with *Watch*, or *Connect your watch* without a reading; *Top 10* with outlined numerals; *Because you loved …*; state collections; genre rows |
+| Clips | A full-screen vertical feed of tonight's picks; Play opens the trailer, + My List, Info |
+| Search | The whole catalogue in tonight's order, filtered as you type |
+| My Scene | Your state right now, *Movies You've Loved*, My List, and the profile sheet (Movie DNA, App Settings, Reset demo) |
 | State pill and sheet | The latest reading in plain words, its age, and Check in again |
-| Settings (⚙ on Welcome, Movie DNA, Tonight, the check-in and Current State) | Consent; choose a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim), which stays connected; behavior signals and Notification access; demo data |
-| Why this movie? | *Your taste* / *Right now* / *How that affected this pick*, from the ranking's own numbers |
-| What changed? | Both rankings, each film's movement, and an honest "no meaningful change" |
+| Settings (⚙ on Welcome, Movie DNA, Home, My Scene, the check-in and Current State) | Consent; choose a source (Galaxy Watch, Bluetooth strap, Apple Health / Health Connect, WearSim), which stays connected; behavior signals and Notification access; demo data |
+| Title page (*Why this movie?*) | Backdrop and Play, title, year · genre · runtime, synopsis, My List / Rate / Check in, then two tabs: **Why It Fits** (*Your taste* / *Right now* / *How that affected this pick*, from the ranking's own numbers) and **More Like This** |
+
+**No taste-only toggle, no comparison screen** (product decision,
+2026-10-01): Scene is simply a state-aware cinema app. Every list uses the
+current state whenever a usable reading exists, and falls back to taste —
+saying so in the state banner — when there is none, it is too old, or the
+signal is too weak. The look follows a mainstream cinema app's layout (as
+Resona follows a music app's) in Scene's own red, mark and TMDB artwork — no
+other brand's name, logo or images.
 
 ## Recommendation logic (transparent, demo-grade)
 
@@ -193,14 +203,14 @@ the `[scene-signal]` debug log say why a reading did not pass.
    - *Signal too weak* — not enough evidence, so taste only.
 4. **Current State** — the plan's card. The busy evening reads Energy
    *Moderate*, Mental load *High*, Engagement *Moderate* → *Unwind*.
-   See tonight's picks: the home starts on *Based on taste* — Se7en, Ex
-   Machina, Prisoners, Shutter Island, Gone Girl.
-5. Switch to **Taste + current state** (busy evening). The top five becomes
-   Glass Onion, Ocean's Eleven, The Nice Guys, Knives Out and Hot Fuzz. Say
-   the line: *"Your preferences haven't changed. Your context has."* (Tonight
-   shows it only when the change is meaningful.)
-6. Open a pick → **Why this movie?**, with its taste-only rank, the reading's
-   age, *Check in again*, and the plan's closing message.
+5. **Home** — the hero is Glass Onion; the state banner says *Unwind* and
+   lists the next picks; *Top Picks for Right Now* carry the *Unwind* badge.
+   Without a reading (or *Skip*) Home is ranked on taste — Se7en, Ex Machina,
+   Prisoners, Shutter Island, Gone Girl — and the banner offers *Connect your
+   watch*.
+6. Open a pick → the title page → **Why It Fits**, with its taste-only rank,
+   the reading's age and the plan's closing message. **More Like This** next
+   to it.
 
 Both lists are pinned by a test (`test/engine_test.dart`). Several places are
 near-ties (Glass Onion / Ocean's Eleven by about 0.0002; places 5–8 within
@@ -213,14 +223,11 @@ Ocean's Eleven, with Knives Out in both lists. Scene's catalogue tags rank Ex
 Machina into the taste-only five and Glass Onion first under the busy evening,
 and the two lists share no film. The story is the same: dark thrillers first,
 then lighter films from the same taste.
-7. **What changed?** — each film's movement (↑ from #11, new), what dropped
-   out, then the closing message.
-
 **Reset demo** (Welcome or Movie DNA) clears everything for the next run.
 
 ## Supporting features
 
-- **Choose My Evening** — explicit intent and a *90 minutes or less* filter.
+- **Categories ▾ → Tonight I want…** — explicit intent and a *90 minutes or less* filter; genres filter Home.
 - **Browse rows** — with a reading: *Because you want to switch off*, *Keep me
   engaged*, *Something familiar*, *Surprise me*, *90 minutes or less*. Without
   one: *Because you like <genre>*.

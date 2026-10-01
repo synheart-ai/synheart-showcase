@@ -9,7 +9,6 @@ import '../app/movie_info_store.dart';
 import '../app/scene_cubit.dart';
 import '../domain/film.dart';
 import '../engine/recommender.dart';
-import 'nav_bar.dart';
 import 'picks.dart';
 import 'poster.dart';
 import 'routes.dart';
@@ -43,7 +42,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final picks = Picks.of(context.read<SceneCubit>());
     final ranked = picks.list(limit: 1000).where((r) => _matches(r.film, _query.trim())).toList();
     final heading = _query.trim().isEmpty
-        ? (picks.withState ? 'Recommended for right now' : 'Recommended for your taste')
+        ? (picks.withState ? 'Recommended for You Right Now' : 'Recommended Movies')
         : '${ranked.length} ${ranked.length == 1 ? 'match' : 'matches'}';
 
     return Scaffold(
@@ -64,11 +63,9 @@ class _SearchScreenState extends State<SearchScreen> {
           onChanged: (v) => setState(() => _query = v),
         ),
       ),
-      extendBody: true,
-      bottomNavigationBar: const SceneNavBar(current: SceneTab.search),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           children: [
             Text(heading, style: t.titleLarge),
             const SizedBox(height: 10),

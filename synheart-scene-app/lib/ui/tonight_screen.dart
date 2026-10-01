@@ -4,33 +4,54 @@ import 'package:go_router/go_router.dart';
 
 import '../app/demo_log.dart';
 import '../app/scene_cubit.dart';
+import '../data/catalogue.dart';
+import '../domain/film.dart';
 import '../domain/state.dart';
-import '../engine/explain.dart';
-import '../engine/recommender.dart';
-import 'picks.dart';
+import '../domain/taste.dart';
+import '../engine/collections.dart';
 import 'home_rows.dart';
+import 'picks.dart';
 import 'routes.dart';
 import 'state_sheet.dart';
 import 'theme.dart';
-import 'tonight_extras.dart';
-import 'nav_bar.dart';
 import 'widgets.dart';
 
-/// The home screen — Tonight's Picks as a browse home (a state-aware
-/// Netflix, as Resona is a state-aware Spotify): the top pick, tonight's top
-/// list and browse rows, under the key demo toggle BASED ON TASTE ⇄ TASTE +
-/// CURRENT STATE (plan §5, §6).
-class TonightScreen extends StatelessWidget {
+/// Home — a state-aware cinema home. Everything on it is ranked by taste and,
+/// whenever a usable reading exists, by the current HSI state; there is no
+/// taste-only switch (product decision, 2026-10-01).
+class TonightScreen extends StatefulWidget {
   const TonightScreen({super.key});
 
   @override
+  State<TonightScreen> createState() => _TonightScreenState();
+}
+
+class _TonightScreenState extends State<TonightScreen> {
+  Genre? _genre;
+
+  static String rowTitle(Genre g) => switch (g) {
+        Genre.comedy => 'Movies That Make You Laugh',
+        Genre.thriller => 'Edge-of-Your-Seat Thrillers',
+        Genre.sciFi => 'Mind-Bending Sci-Fi',
+        Genre.crime => 'Crime Movies',
+        Genre.action => 'Action Movies',
+        Genre.drama => 'Dramas',
+        Genre.horror => 'Scary Movies',
+        Genre.documentary => 'Documentaries',
+        Genre.romance => 'Romantic Movies',
+        Genre.animation => 'Animated Movies',
+        _ => '${g.label} Movies',
+      };
+
+  @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     final s = context.watch<SceneCubit>().state;
     final cubit = context.read<SceneCubit>();
 
     if (s.profile == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Tonight's picks")),
+        appBar: AppBar(title: const Text('Home')),
         body: PageBody(
           bottom: FilledButton(onPressed: () => context.push(Routes.profile), child: const Text('Build my movie profile')),
           children: const [Callout(child: Text('Scene needs your movie profile first.'))],
@@ -39,124 +60,171 @@ class TonightScreen extends StatelessWidget {
     }
 
     final picks = Picks.of(cubit);
-    final list = picks.list();
-    final current = picks.state;
-    final at = s.current?.capturedAt;
-
-    // The demo line only when the state really changed the list; a reorder of
-    // the same films is said plainly (RFC §10: no forced change).
-    final meaningful = picks.withState && (picks.compare()?.isMeaningful ?? false);
-    final demoSuffix = [
-      if (current?.source == StateSource.preset) ' (Demo data — not a real reading.)',
-      if (picks.withState && current!.isLowConfidence) ' Based on a low-confidence reading.',
-    ].join();
-    final String note;
-    if (picks.withState) {
-      note = meaningful ? '' : 'Tonight\'s state barely changes your list — your taste already fits it.$demoSuffix';
-    } else if (picks.isStale) {
-      note = 'Taste only. Your last reading, from ${ageLabel(at!, cubit.now())}, is too old to use.';
-    } else if (picks.lacksEvidence) {
-      note = 'Taste only. There is not enough signal yet to say what fits right now — this is not a negative result.';
-    } else if (current == null) {
-      note = 'Taste only. No current state was used — connect a source to see what fits right now.';
-    } else {
-      note = 'Taste only — the way a conventional recommender would.';
-    }
+    final all = picks.list(limit: 1000).where((r) => _genre == null || r.film.genres.contains(_genre)).toList();
+    final need = picks.hasUsableState ? picks.state!.suggestedExperience : null;
+    final loved = [
+      for (final e in s.answers.ratings.entries)
+        if (e.value == Rating.love) ?filmById(e.key),
+    ];
+    final because = loved.isEmpty ? null : loved.first;
 
     return LogOnShow(
       event: DemoEvent.recommendationsViewed,
       fields: {'mode': picks.mode.name, 'stale': '${picks.isStale}'},
       child: Scaffold(
-        // The logo mark in place of a long title: at 390 pt the back arrow,
-        // Settings and the state pill leave little room (a title was once
-        // squeezed to 30 pt, 1:1 contrast). Movie DNA is in the bottom bar.
         appBar: AppBar(
-          titleSpacing: 0,
+          titleSpacing: 16,
           title: Row(children: [
-            Image.asset('assets/scene_mark.png', height: 34, semanticLabel: 'Scene'),
-            const SizedBox(width: 12),
-            const Flexible(child: Text('Tonight', maxLines: 1, overflow: TextOverflow.ellipsis)),
+            Image.asset('assets/scene_mark.png', height: 36, semanticLabel: 'Scene'),
+            const SizedBox(width: 14),
+            const Flexible(child: Text('Home', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))),
           ]),
           actions: const [
+            StatePill(),
             SettingsButton(),
-            Padding(padding: EdgeInsets.only(right: 12), child: StatePill()),
+            SizedBox(width: 4),
           ],
         ),
-        extendBody: true,
-        bottomNavigationBar: const SceneNavBar(current: SceneTab.home),
-        body: PageBody(
-          bottom: !picks.hasUsableState
-              ? FilledButton(onPressed: () => context.push(Routes.checkIn), child: const Text('Do a Synheart check-in'))
-              : OutlinedButton(onPressed: () => context.push(Routes.compare), child: const Text('What changed? Compare side by side')),
-          children: [
-            // The key demo toggle, as the chip row under a cinema app's header.
-            // Only the state chip is disabled without a usable reading; its
-            // text stays at 4.5:1 or better.
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              _ModeChip(label: 'BASED ON TASTE', selected: picks.mode == RecommendationMode.tasteOnly, onTap: () => cubit.setMode(RecommendationMode.tasteOnly)),
-              _ModeChip(
-                label: 'TASTE + CURRENT STATE',
-                selected: picks.mode == RecommendationMode.tastePlusState,
-                onTap: picks.hasUsableState ? () => cubit.setMode(RecommendationMode.tastePlusState) : null,
+        body: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+            children: [
+              _ChipRow(
+                genre: _genre,
+                onGenre: (g) => setState(() => _genre = g),
+                onMyList: () => context.go(Routes.myScene),
               ),
-            ]),
-            const SizedBox(height: 14),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: meaningful
-                  ? Callout(
-                      key: const ValueKey('changed'),
-                      title: "Your preferences haven't changed.",
-                      child: Text('Your context has.$demoSuffix'),
-                    )
-                  : Callout(key: ValueKey(note), child: Text(note)),
-            ),
-            const SizedBox(height: 16),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              child: Column(
-                key: ValueKey('${picks.mode}-$current-${s.viewing}-${s.hiddenFilmIds.length}'),
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (list.isEmpty)
-                    const Callout(child: Text('Nothing fits these filters — try removing one.'))
-                  else ...[
-                    HeroPick(recommendation: list.first, headline: picks.explanation(list.first).headline),
-                    const SizedBox(height: 22),
-                    Text("Tonight's top ${list.length}", style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 10),
-                    TopRow(picks: list),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-            const ChooseMyEvening(),
-            BrowseRows(withState: picks.withState, exclude: {for (final r in list) r.film.id}),
-          ],
+              const SizedBox(height: 16),
+              if (all.isEmpty)
+                const Callout(child: Text('Nothing fits these filters — try removing one.'))
+              else ...[
+                HeroPick(recommendation: all.first, tagline: all.first.fitLabel),
+                PosterRow(
+                  title: picks.withState ? 'Top Picks for Right Now' : "Today's Top Picks for You",
+                  from: 'top-picks',
+                  films: [for (final r in all.skip(1).take(10)) r.film],
+                  badges: {
+                    for (final r in all.skip(1).take(3)) r.film.id: need?.label ?? r.fit.label,
+                  },
+                ),
+                StateBanner(picks: picks, films: all.skip(1).take(3).toList()),
+                TopRow(title: picks.withState ? 'Top 10 for You Right Now' : 'Top 10 for You Today', picks: all.take(10).toList()),
+                if (because != null && _genre == null)
+                  PosterRow(
+                    title: 'Because you loved ${because.title}',
+                    from: 'because-${because.id}',
+                    films: [for (final r in all) if (r.film.genres.any(because.genres.contains)) r.film].take(10).toList(),
+                  ),
+                if (picks.withState && _genre == null)
+                  for (final e in buildCollections(s.profile!, state: picks.state!, context: s.viewing, hidden: s.hiddenFilmIds).entries)
+                    PosterRow(title: e.key.title, from: e.key.name, films: e.value),
+                for (final g in (_genre == null ? s.profile!.rankedGenres.take(3).map((e) => e.key) : [_genre!]))
+                  PosterRow(
+                    title: rowTitle(g),
+                    from: 'genre-${g.name}',
+                    films: [for (final r in all) if (r.film.genres.contains(g)) r.film].take(12).toList(),
+                  ),
+                const SizedBox(height: 24),
+                Text('Ranked on your taste${picks.withState ? ' and your current state' : ''}.', textAlign: TextAlign.center, style: t.bodySmall),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.label, required this.selected, required this.onTap});
+/// The chip row under the header: Movies, My List and Categories ▾ (genres
+/// and "Tonight I want…"), as a cinema app's Shows / Movies / Categories.
+class _ChipRow extends StatelessWidget {
+  const _ChipRow({required this.genre, required this.onGenre, required this.onMyList});
 
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
+  final Genre? genre;
+  final ValueChanged<Genre?> onGenre;
+  final VoidCallback onMyList;
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        showCheckmark: false,
-        labelStyle: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: onTap == null ? SceneColors.sage : (selected ? SceneColors.paper : SceneColors.ink),
-        ),
-        shape: const StadiumBorder(side: BorderSide(color: Color(0xFF808080))),
-        onSelected: onTap == null ? null : (_) => onTap!(),
-      );
+  Widget build(BuildContext context) {
+    final viewing = context.select((SceneCubit c) => c.state.viewing);
+    Widget chip(String label, VoidCallback onTap, {bool selected = false, IconData? trailing}) => Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: ActionChip(
+            label: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(label),
+              if (trailing != null) ...[const SizedBox(width: 4), Icon(trailing, size: 18, color: selected ? SceneColors.paper : SceneColors.ink)],
+            ]),
+            labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: selected ? SceneColors.paper : SceneColors.ink),
+            backgroundColor: selected ? SceneColors.ink : SceneColors.paper,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            shape: const StadiumBorder(side: BorderSide(color: Color(0xFF808080))),
+            onPressed: onTap,
+          ),
+        );
+    final intent = viewing.intent;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        if (genre != null) chip(genre!.label, () => onGenre(null), selected: true, trailing: Icons.close),
+        if (intent != null) chip(intent.label, () => context.read<SceneCubit>().setIntent(null), selected: true, trailing: Icons.close),
+        if (genre == null) chip('Movies', () => onGenre(null)),
+        chip('My List', onMyList),
+        chip('Categories', () => _showCategories(context, onGenre), trailing: Icons.keyboard_arrow_down),
+      ]),
+    );
+  }
 }
+
+Future<void> _showCategories(BuildContext context, ValueChanged<Genre?> onGenre) => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xF2232323),
+      builder: (sheet) {
+        final t = Theme.of(sheet).textTheme;
+        final cubit = context.read<SceneCubit>();
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          maxChildSize: 0.95,
+          builder: (_, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            children: [
+              Text('Tonight I want…', style: t.labelSmall),
+              for (final i in EveningIntent.values)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(i.label, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w500)),
+                  trailing: cubit.state.viewing.intent == i ? const Icon(Icons.check) : null,
+                  onTap: () {
+                    cubit.setIntent(cubit.state.viewing.intent == i ? null : i);
+                    Navigator.pop(sheet);
+                  },
+                ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('90 minutes or less', style: t.titleLarge?.copyWith(fontWeight: FontWeight.w500)),
+                trailing: cubit.state.viewing.maxRuntimeMinutes != null ? const Icon(Icons.check) : null,
+                onTap: () {
+                  cubit.setShortOnly(cubit.state.viewing.maxRuntimeMinutes == null);
+                  Navigator.pop(sheet);
+                },
+              ),
+              const SizedBox(height: 16),
+              Text('Categories', style: t.labelSmall),
+              for (final g in Genre.values)
+                if (candidateFilms.any((f) => f.genres.contains(g)))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(g.label, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      onGenre(g);
+                      Navigator.pop(sheet);
+                    },
+                  ),
+            ],
+          ),
+        );
+      },
+    );

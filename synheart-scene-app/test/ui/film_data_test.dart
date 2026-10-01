@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('#1 TONIGHT'));
+    await tester.tap(find.descendant(of: find.byType(Card).first, matching: find.text('Se7en')).last);
     await tester.pumpAndSettle();
 
     expect(find.text('Why this movie?'), findsOneWidget);

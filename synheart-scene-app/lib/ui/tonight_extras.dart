@@ -2,45 +2,7 @@ import 'package:flutter/material.dart' hide Feedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../app/scene_cubit.dart';
-import '../domain/state.dart';
 import 'theme.dart';
-
-/// "Choose My Evening" — explicit intent plus the 90-minute filter, in both
-/// modes. The user's choice takes precedence over the current state (RFC §4).
-class ChooseMyEvening extends StatelessWidget {
-  const ChooseMyEvening({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final viewing = context.select((SceneCubit c) => c.state.viewing);
-    final cubit = context.read<SceneCubit>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Choose my evening', style: t.titleMedium),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final intent in EveningIntent.values)
-              ChoiceChip(
-                label: Text(intent.label),
-                selected: viewing.intent == intent,
-                onSelected: (on) => cubit.setIntent(on ? intent : null),
-              ),
-            FilterChip(
-              label: const Text('90 minutes or less'),
-              selected: viewing.maxRuntimeMinutes != null,
-              onSelected: cubit.setShortOnly,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
 
 /// Lightweight feedback after a recommendation, with optional reasons (§7).
 class FeedbackPanel extends StatelessWidget {
