@@ -38,6 +38,8 @@ class StatePill extends StatelessWidget {
 
 Future<void> showStateSheet(BuildContext context) => showModalBottomSheet<void>(
       context: context,
+      // Over the tab bar, not under it.
+      useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => const _StateSheet(),
@@ -147,7 +149,7 @@ class _StateSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [
-              Expanded(child: Text('CURRENT STATE', style: t.labelSmall)),
+              Expanded(child: Text('CURRENT STATE', style: t.labelSmall?.copyWith(color: SceneColors.accent, letterSpacing: 2))),
               IconButton(
                 tooltip: 'Settings',
                 icon: const Icon(Icons.tune),
@@ -157,8 +159,19 @@ class _StateSheet extends StatelessWidget {
                 },
               ),
             ]),
-            Icon(view.icon, size: 40, color: SceneColors.ink),
-            const SizedBox(height: 10),
+            Center(
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: suggestionTint(reading != null && reading.hasEvidence && !view.stale ? reading.suggestedExperience : null)),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Icon(view.icon, size: 32, color: SceneColors.ink),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(view.headline, style: t.headlineSmall, textAlign: TextAlign.center),
             const SizedBox(height: 6),
             Text(view.message, style: t.bodyLarge?.copyWith(color: SceneColors.sage), textAlign: TextAlign.center),

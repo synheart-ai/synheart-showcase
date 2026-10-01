@@ -19,7 +19,7 @@ void main() {
     );
     await pumpCard(tester, watch);
     expect(find.text('Easy watch'), findsOneWidget);
-    // Energy, Mental load, Engagement and the suggested experience.
+    // Energy, Mental load and Engagement tiles, and the suggested experience.
     expect(find.text('low confidence'), findsNWidgets(4));
     expect(find.textContaining('not sure about this reading'), findsOneWidget);
     expect(find.textContaining('left out'), findsNothing);

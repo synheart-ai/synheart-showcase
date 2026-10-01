@@ -18,19 +18,6 @@ class StateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final need = reading.suggestedExperience;
-    Widget row(String label, String value, {bool strong = false, bool low = false, String? why}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: t.titleMedium),
-                if (low) const LowConfidenceTag(),
-                if (why != null) Text(why, style: t.bodySmall?.copyWith(color: SceneColors.sage)),
-              ]),
-            ),
-            Text(value, style: (strong ? t.titleMedium : t.bodyLarge)?.copyWith(color: strong ? SceneColors.ink : SceneColors.sage)),
-          ]),
-        );
     String raw(HsiAxis a) {
       final r = reading.reading(a);
       if (r == null || !r.isAvailable) return reading.whyUnavailable(a) ?? 'not available';
@@ -42,71 +29,177 @@ class StateCard extends StatelessWidget {
       return '${r.value.toStringAsFixed(2)}$note · confidence ${r.confidence.toStringAsFixed(2)}';
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final p in PlainSignal.values)
-              row(
-                p.label,
-                reading.levelOf(p) == null ? 'Not available' : p.levelLabel(reading.levelOf(p)!),
-                low: reading.levelOf(p) != null && reading.isLowConfidenceSignal(p),
-                why: reading.whyUnavailableSignal(p),
-              ),
-            const Divider(height: 18),
-            row('Suggested experience', need?.label ?? 'Balanced', strong: true, low: reading.isLowConfidence),
-            if (reading.isLowConfidence)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('Synheart is not sure about this reading, so treat it lightly.', style: t.bodySmall?.copyWith(color: SceneColors.sage)),
-              ),
-            Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: Text('Details', style: t.bodyMedium),
-                subtitle: Text('Provisional labels, from Synheart readings', style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+    final tint = suggestionTint(reading.hasEvidence ? need : null);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The suggestion first, tinted like Home's state banner.
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: tint),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final a in HsiAxis.values)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: Text(a.label, style: t.bodyMedium)),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(raw(a), textAlign: TextAlign.end, style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
-                        ),
-                      ]),
-                    ),
-                  if (reading.basisLabel != null || reading.contextLabel != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        [
-                          if (reading.basisLabel != null) 'Read from ${reading.basisLabel}.',
-                          if (reading.contextLabel != null)
-                            "Synheart's activity guess: ${reading.contextLabel}${reading.appCategory == null ? '' : ' (app type ${reading.appCategory})'}. Not used for picks.",
-                        ].join(' '),
-                        style: t.bodySmall?.copyWith(color: SceneColors.sage),
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, bottom: 10),
-                    child: Text(
-                      'Energy comes from arousal; mental load from stress, capacity and cognitive load; engagement from '
-                      'focus and focus quality; tiredness from mental fatigue and sleep; interruptions from interruption '
-                      'pressure; mood from valence. Interaction mode is shown but not used. Readings Synheart is not '
-                      'confident about are marked low confidence. This mapping is provisional.',
-                      style: t.bodySmall?.copyWith(color: SceneColors.sage),
-                    ),
+                  Expanded(
+                    child: Text('Suggested experience', style: t.labelSmall?.copyWith(color: SceneColors.ink)),
                   ),
+                  Text(need?.label ?? 'Balanced', style: t.headlineSmall),
                 ],
               ),
-            ),
-          ],
+              if (reading.isLowConfidence) ...[
+                const SizedBox(height: 6),
+                const LowConfidenceTag(),
+                Text('Synheart is not sure about this reading, so treat it lightly.', style: t.bodySmall?.copyWith(color: SceneColors.body)),
+              ],
+            ],
+          ),
         ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, c) {
+            final w = (c.maxWidth - 8) / 2;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final p in PlainSignal.values)
+                  SizedBox(
+                    width: w,
+                    child: _SignalTile(reading: reading, signal: p),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 4),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: Text('Details', style: t.bodyMedium),
+            subtitle: Text('Provisional labels, from Synheart readings', style: t.bodySmall?.copyWith(color: SceneColors.sage)),
+            children: [
+              for (final a in HsiAxis.values)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: Text(a.label, style: t.bodyMedium)),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          raw(a),
+                          textAlign: TextAlign.end,
+                          style: t.bodyMedium?.copyWith(color: SceneColors.sage),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (reading.basisLabel != null || reading.contextLabel != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    [
+                      if (reading.basisLabel != null) 'Read from ${reading.basisLabel}.',
+                      if (reading.contextLabel != null)
+                        "Synheart's activity guess: ${reading.contextLabel}${reading.appCategory == null ? '' : ' (app type ${reading.appCategory})'}. Not used for picks.",
+                    ].join(' '),
+                    style: t.bodySmall?.copyWith(color: SceneColors.sage),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6, bottom: 10),
+                child: Text(
+                  'Energy comes from arousal; mental load from stress, capacity and cognitive load; engagement from '
+                  'focus and focus quality; tiredness from mental fatigue and sleep; interruptions from interruption '
+                  'pressure; mood from valence. Interaction mode is shown but not used. Readings Synheart is not '
+                  'confident about are marked low confidence. This mapping is provisional.',
+                  style: t.bodySmall?.copyWith(color: SceneColors.sage),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The tint of a suggestion — the same colours as Home's state banner.
+List<Color> suggestionTint(Experience? e) => switch (e) {
+  Experience.unwind => const [Color(0xFF1E4D3A), Color(0xFF0E241B)],
+  Experience.easyWatch => const [Color(0xFF4B2A6B), Color(0xFF221432)],
+  Experience.stayEngaged => const [Color(0xFF173E6B), Color(0xFF0B1D33)],
+  null => const [Color(0xFF3A3A3A), Color(0xFF1A1A1A)],
+};
+
+/// One plain signal: its name and level, a three-step meter, and either a
+/// "low confidence" note or why it is not available.
+class _SignalTile extends StatelessWidget {
+  const _SignalTile({required this.reading, required this.signal});
+  final CurrentState reading;
+  final PlainSignal signal;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final level = reading.levelOf(signal);
+    final available = level != null;
+    final low = available && reading.isLowConfidenceSignal(signal);
+    final why = reading.whyUnavailableSignal(signal);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(signal.label, style: t.titleSmall?.copyWith(color: available ? SceneColors.ink : SceneColors.sage)),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  available ? signal.levelLabel(level) : 'Not available',
+                  textAlign: TextAlign.end,
+                  style: available ? t.titleSmall?.copyWith(fontWeight: FontWeight.w800) : t.bodySmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (var i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
+                Expanded(
+                  child: Container(
+                    height: 5,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(3),
+                      color: available && i <= level.index ? (low ? SceneColors.red.withValues(alpha: 0.55) : SceneColors.red) : Colors.white12,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (low) ...[const SizedBox(height: 8), const LowConfidenceTag()] else if (why != null) ...[const SizedBox(height: 8), Text(why, style: t.bodySmall)],
+        ],
       ),
     );
   }

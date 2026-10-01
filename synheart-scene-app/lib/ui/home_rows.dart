@@ -15,6 +15,7 @@ import '../engine/recommender.dart';
 import 'picks.dart';
 import 'poster.dart';
 import 'routes.dart';
+import 'state_card.dart';
 import 'state_sheet.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -275,12 +276,6 @@ class StateBanner extends StatelessWidget {
   /// The picks to list (already in tonight's order).
   final List<Recommendation> films;
 
-  static List<Color> tint(Experience? e) => switch (e) {
-        Experience.unwind => const [Color(0xFF1E4D3A), Color(0xFF0E241B)],
-        Experience.easyWatch => const [Color(0xFF4B2A6B), Color(0xFF221432)],
-        Experience.stayEngaged => const [Color(0xFF173E6B), Color(0xFF0B1D33)],
-        null => const [Color(0xFF3A3A3A), Color(0xFF1A1A1A)],
-      };
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +309,7 @@ class StateBanner extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: tint(need)),
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: suggestionTint(need)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Semantics(
