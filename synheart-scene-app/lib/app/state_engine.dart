@@ -94,6 +94,11 @@ class SceneStateEngine extends ChangeNotifier {
   DateTime? _lastSampleAt;
   CurrentState? _latest;
   CurrentState? _published;
+
+  /// A change of suggestion seen once and waiting for the next reading to
+  /// confirm it ([_held] tells "pending Balanced" from "nothing").
+  Experience? _pendingNeed;
+  bool _held = false;
   bool _presenting = false;
   bool _settling = false;
 
@@ -261,6 +266,7 @@ class SceneStateEngine extends ChangeNotifier {
     }
     // A check-in needs a reading taken after it started.
     _published = null;
+    _held = false;
     _checkIn = CheckInPhase.reading;
     _checkInStartedAt = _clock();
     final diag = _diag = CheckInDiagnostics(chosenName ?? chosen.source.label, _checkInStartedAt!);
@@ -399,14 +405,35 @@ class SceneStateEngine extends ChangeNotifier {
       _diag?.onReading(raw);
       CheckInDiagnostics.log('reading #${_diag?.readings} · ${CheckInDiagnostics.describeReading(raw)} · '
           '${reading.hasEvidence ? 'passes the gate' : 'below the gate'}');
+      // During a check-in the first reading with evidence is its result.
+      if (reading.hasEvidence) _publish(reading);
     } else {
+      final publish = reading.hasEvidence && _confirmed(reading);
       CheckInDiagnostics.log('live reading · ${CheckInDiagnostics.describeReading(raw)} · '
-          '${reading.hasEvidence ? 'published' : 'no evidence'} · runtime ${backend.diagnostics()}');
+          '${!reading.hasEvidence ? 'no evidence' : publish ? 'published' : 'held: ${_label(reading.suggestedExperience)} needs a second reading'}'
+          ' · runtime ${backend.diagnostics()}');
+      if (publish) _publish(reading);
     }
-    // Live: every reading with evidence updates the state; during a check-in
-    // it is also that check-in's result.
-    if (reading.hasEvidence) _publish(reading);
     notifyListeners();
+  }
+
+  static String _label(Experience? e) => e?.label ?? 'Balanced';
+
+  /// Live readings update the state every minute, but a change of
+  /// *suggestion* (Unwind / Easy watch / Stay engaged / Balanced) is
+  /// published only when the next reading agrees, so one minute of phone use
+  /// does not flip it (seen on device 2026-10-01: Balanced ⇄ Easy watch as
+  /// focus quality came and went). The same suggestion publishes at once.
+  bool _confirmed(CurrentState reading) {
+    final prev = _published;
+    final next = reading.suggestedExperience;
+    if (prev == null || prev.isStaleAt(_clock()) || prev.suggestedExperience == next || (_held && _pendingNeed == next)) {
+      _held = false;
+      return true;
+    }
+    _held = true;
+    _pendingNeed = next;
+    return false;
   }
 
   void _publish(CurrentState reading) {

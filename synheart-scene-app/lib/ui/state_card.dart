@@ -56,7 +56,7 @@ class StateCard extends StatelessWidget {
                 why: reading.whyUnavailableSignal(p),
               ),
             const Divider(height: 18),
-            row('Suggested experience', need?.label ?? 'No clear need', strong: true, low: reading.isLowConfidence),
+            row('Suggested experience', need?.label ?? 'Balanced', strong: true, low: reading.isLowConfidence),
             if (reading.isLowConfidence)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),

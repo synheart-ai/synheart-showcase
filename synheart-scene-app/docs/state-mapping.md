@@ -61,12 +61,20 @@ All four numbers are tunable defaults.
 | stress ≥ 0.62, or arousal ≥ 0.76, or capacity ≤ 0.35, or **cognitive load ≥ 0.70** | Unwind | ease | Help me unwind |
 | engagement ≤ 0.44, or **tiredness ≥ 0.70**, or **interruptions ≥ 0.70** | Easy watch | clarity | Just entertain me |
 | engagement ≥ 0.60 | Stay engaged | flow | Give me something engaging |
-| otherwise | *No clear need* (a real result) | — | none |
+| otherwise | *Balanced* (shown as "You seem balanced"; a real result) | — | none |
 
 Engagement is focus alone when focus quality is missing, so the core-only
 behavior is unchanged. The behavior thresholds (0.70) are demo choices
 (2026-09-30), stricter than the core ones because these axes are newer to
 Scene.
+
+**A change of suggestion needs two readings in a row** (2026-10-01). Live
+readings still publish every minute, but one that would change the suggested
+experience (Unwind / Easy watch / Stay engaged / Balanced) is held until the
+next reading agrees; the same suggestion publishes at once, and a check-in's
+first reading is its result. Seen on device: Balanced ⇄ Easy watch flipped as
+focus quality came and went with phone use. The log says `held: … needs a
+second reading`.
 
 ## From axes to film targets
 
@@ -148,7 +156,7 @@ axis names. **Provisional mapping — needs Research approval (RFC §6):**
 | Tiredness | the higher of mental fatigue and 1 − sleep | same |
 | Interruptions | 1 − interruption pressure (the score is lower-is-more) | same |
 | Mood | valence | Lower / Steady / Brighter — never "Low", which reads like a diagnosis |
-| Suggested experience | the policy above | Unwind / Easy watch / Stay engaged / No clear need |
+| Suggested experience | the policy above | Unwind / Easy watch / Stay engaged / Balanced |
 
 Only axes that pass the confidence gate count; otherwise *Not available*,
 with the runtime's reason in plain words when it gave one (`no_signal` → "no

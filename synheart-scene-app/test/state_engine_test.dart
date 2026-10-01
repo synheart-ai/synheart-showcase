@@ -56,6 +56,35 @@ void main() {
       expect(published, hasLength(2));
     });
 
+    test('a change of suggestion waits for a second reading; the same one publishes at once', () async {
+      const easy = CurrentState(focus: AxisReading(0.2, 0.5), source: StateSource.synheart);
+      const balanced = CurrentState(focus: AxisReading(0.5, 0.5), source: StateSource.synheart);
+      await engine.consent();
+      await engine.connectPlatformHealth();
+      fake.emit(balanced);
+      expect(published.single.suggestedExperience, isNull, reason: 'the first reading publishes');
+      fake.emit(easy);
+      expect(published, hasLength(1), reason: 'Easy watch seen once: held');
+      fake.emit(balanced);
+      expect(published, hasLength(2), reason: 'back to Balanced: same as published, so at once');
+      expect(published.last.suggestedExperience, isNull);
+      fake.emit(easy);
+      fake.emit(easy);
+      expect(published, hasLength(3), reason: 'confirmed by a second reading');
+      expect(published.last.suggestedExperience, Experience.easyWatch);
+    });
+
+    test('a check-in publishes its first reading even when the suggestion changes', () async {
+      await engine.consent();
+      await engine.connectPlatformHealth();
+      fake.emit(const CurrentState(focus: AxisReading(0.5, 0.5), source: StateSource.synheart));
+      expect(published, hasLength(1));
+      await engine.startCheckIn();
+      fake.emit(unwind);
+      expect(published, hasLength(2));
+      expect(engine.checkIn, CheckInPhase.done);
+    });
+
     test('the chosen source stays connected', () async {
       await engine.consent();
       await engine.connectBluetooth(const WearableDevice('hrm-1', 'Polar H10'));

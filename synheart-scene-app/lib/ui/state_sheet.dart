@@ -84,10 +84,10 @@ class StateView {
       final lowNote = fresh.isLowConfidence ? ' Synheart is not sure about this reading, so treat it lightly.' : '';
       return need == null
           ? StateView(
-              label: 'No clear need$low',
-              pill: 'No clear need',
-              headline: 'Nothing stands out tonight',
-              message: 'Your picks follow your taste, nudged a little by what Synheart sees.$lowNote',
+              label: 'Balanced$low',
+              pill: 'Balanced',
+              headline: 'You seem balanced',
+              message: 'Nothing stands out right now, so your picks follow your taste, nudged a little by what Synheart sees.$lowNote',
               icon: Icons.remove_red_eye_outlined,
               reading: fresh)
           : StateView(

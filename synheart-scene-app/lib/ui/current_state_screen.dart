@@ -38,7 +38,7 @@ class CurrentStateScreen extends StatelessWidget {
     final headline = !reading.hasEvidence
         ? 'Not enough signal to say what fits tonight.'
         : need == null
-            ? 'Nothing stands out tonight.'
+            ? 'You seem balanced.'
             : 'This may be ${need.phrase}.';
 
     return Scaffold(

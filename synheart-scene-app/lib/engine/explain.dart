@@ -102,7 +102,7 @@ Explanation explain(
   final need = st.suggestedExperience;
   final rightNow = [
     need == null
-        ? '$source show$s no clear need tonight, so ${s.isEmpty ? 'they' : 'it'} only nudge$s the ranking. $basis'
+        ? '$source look$s balanced right now, so ${s.isEmpty ? 'they' : 'it'} only nudge$s the ranking. $basis'
         : '$source suggest$s this may be ${need.phrase}. $basis',
     'This film is ${_join([intensity, thinking, tone])}.',
     ...choices,

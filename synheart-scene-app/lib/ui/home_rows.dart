@@ -281,8 +281,8 @@ class StateBanner extends StatelessWidget {
     final String message;
     if (picks.hasUsableState) {
       eyebrow = st!.source == StateSource.preset ? 'RIGHT NOW · DEMO DATA' : 'RIGHT NOW · FROM YOUR WEARABLE';
-      headline = need?.label ?? 'No clear need';
-      message = need?.message ?? 'Nothing stands out right now, so tonight leans on your taste.';
+      headline = need?.label ?? 'Balanced';
+      message = need?.message ?? 'You seem balanced — picks follow your taste.';
     } else if (picks.isStale) {
       eyebrow = 'RIGHT NOW';
       headline = 'Reading too old';
