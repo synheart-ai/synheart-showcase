@@ -71,6 +71,8 @@ void main() {
     await expectGuidelines(tester);
     final demo = find.textContaining('Demo data: Busy day');
     await tester.scrollUntilVisible(demo, 200, scrollable: find.byType(Scrollable).last);
+    await tester.ensureVisible(demo);
+    await tester.pumpAndSettle();
     await tester.tap(demo);
     await tester.pumpAndSettle();
     await expectGuidelines(tester);
