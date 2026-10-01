@@ -83,5 +83,6 @@ TasteProfile buildTasteProfile(TasteAnswers answers, {List<Film> films = onboard
       for (final e in answers.ratings.entries)
         if (e.value != Rating.notSeen) e.key,
     },
+    hasTaste: answers.preferredGenres.isNotEmpty || answers.ratings.values.any((r) => r != Rating.notSeen),
   );
 }

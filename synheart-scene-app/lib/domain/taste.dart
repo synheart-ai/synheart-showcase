@@ -65,7 +65,13 @@ class TasteProfile extends Equatable {
     required this.likesDarkTones,
     required this.discovery,
     required this.seenFilmIds,
+    this.hasTaste = true,
   });
+
+  /// Whether the answers say anything about taste: a genre picked, or a film
+  /// rated (anything but "Haven't seen it"). Without it every genre is
+  /// neutral, and the state takes taste's share of the score.
+  final bool hasTaste;
 
   /// Genre → affinity 0–1 (shown as a percentage in Movie DNA).
   final Map<Genre, double> genreAffinity;
@@ -99,6 +105,7 @@ class TasteProfile extends Equatable {
 
   @override
   List<Object?> get props => [
+        hasTaste,
         genreAffinity,
         traitAffinity,
         preferredIntensity,

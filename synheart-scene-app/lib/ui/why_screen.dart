@@ -334,7 +334,7 @@ class _WhyItFits extends StatelessWidget {
         const SizedBox(height: 4),
         Text('Weights are tunable defaults, not a validated formula.', style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
         const SizedBox(height: 12),
-        _Factor(label: 'Taste', weight: w.taste, value: r.taste),
+        if (w.taste > 0) _Factor(label: 'Taste', weight: w.taste, value: r.taste),
         if (w.usesState) _Factor(label: 'Right now (Synheart HSI)', weight: w.state, value: r.state),
         if (w.usesContext) _Factor(label: 'Your choices for tonight', weight: w.context, value: r.context),
         const SizedBox(height: 20),

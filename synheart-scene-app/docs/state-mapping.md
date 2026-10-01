@@ -105,6 +105,12 @@ capacity, stress, arousal, mental_fatigue and focus_quality higher-is-more.
 > read 0.79@1.00. Scene treats it as unavailable ("too early to tell").
 > Confirm with the runtime team.
 
+**No taste given → the state takes taste's share** (user decision,
+2026-10-01). With no genre picked and no film rated (`TasteProfile.hasTaste`
+false) every genre is neutral, so taste is 0 % and the state gets 85 %
+(15 % with an intent stays with the choice). *Why this movie?* says so and
+hides the taste row.
+
 **The state's share scales with confidence** (`stateTrust`, 2026-09-30).
 trust = mean confidence of the driving axes ÷ 0.45, clamped to 0–1; the
 state's weight is 35 % × trust (15 % × trust with an intent), and what it

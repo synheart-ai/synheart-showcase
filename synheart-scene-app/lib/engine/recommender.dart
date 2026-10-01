@@ -33,7 +33,14 @@ class Weights {
   /// need (RFC §4), so it swaps shares with the state: 50 / 15 / 35.
   /// The state's share is scaled by [trust]; what it gives up goes to
   /// taste, and the user's own choice keeps its share.
-  static Weights withState({required bool hasIntent, double trust = 1}) {
+  static Weights withState({required bool hasIntent, double trust = 1, bool hasTaste = true}) {
+    // No taste given (no genre picked, no film rated): taste would rank every
+    // film on neutral priors, so its share goes to the state (user decision,
+    // 2026-10-01). The choice of evening keeps its share.
+    if (!hasTaste) {
+      final context = hasIntent ? stateWeight : contextWeight;
+      return Weights(0, 1 - context, context);
+    }
     final t = _clamp01(trust);
     final state = (hasIntent ? contextWeight : stateWeight) * t;
     final context = hasIntent ? stateWeight : contextWeight;
@@ -246,7 +253,7 @@ class Recommender {
     final hasIntent = context.intent != null;
     final w = mode == RecommendationMode.tasteOnly || state == null
         ? Weights.tasteOnly(hasIntent: hasIntent)
-        : Weights.withState(hasIntent: hasIntent, trust: trust ?? stateTrust(state));
+        : Weights.withState(hasIntent: hasIntent, trust: trust ?? stateTrust(state), hasTaste: p.hasTaste);
     final total = w.taste * taste + w.state * st + w.context * ctx;
 
     final genres = f.genres.toList()..sort((a, b) => p.affinityFor(b).compareTo(p.affinityFor(a)));

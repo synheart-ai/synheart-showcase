@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scene/app/signals.dart';
 import 'package:scene/data/demo_persona.dart';
 import 'package:scene/domain/state.dart';
+import 'package:scene/domain/taste.dart';
+import 'package:scene/domain/film.dart';
 import 'package:scene/engine/explain.dart';
 import 'package:scene/engine/recommender.dart';
 import 'package:scene/engine/taste_builder.dart';
@@ -277,6 +279,25 @@ void main() {
       expect(r.weights.state, closeTo(0.07, 1e-9));
       final e = explain(r, state: low);
       expect(e.effect, contains('less than usual, because Synheart is not sure about this reading'));
+    });
+  });
+
+  group('no taste given: the state takes taste\'s share', () {
+    test('no genre picked and no film rated', () {
+      final empty = buildTasteProfile(const TasteAnswers());
+      expect(empty.hasTaste, isFalse);
+      const reading = CurrentState(focus: AxisReading(0.3, 0.09), source: StateSource.synheart);
+      final r = const Recommender().recommend(empty, state: reading).first;
+      expect(r.weights.taste, 0);
+      expect(r.weights.state, closeTo(0.85, 1e-9));
+      expect(r.weights.context, 0.15);
+      expect(explain(r, state: reading).effect, contains('You have not picked genres or rated films yet'));
+    });
+
+    test('one picked genre, or one rated film, is taste', () {
+      expect(buildTasteProfile(const TasteAnswers(preferredGenres: {Genre.comedy})).hasTaste, isTrue);
+      expect(buildTasteProfile(const TasteAnswers(ratings: {'dark-knight': Rating.like})).hasTaste, isTrue);
+      expect(buildTasteProfile(const TasteAnswers(ratings: {'dark-knight': Rating.notSeen})).hasTaste, isFalse);
     });
   });
 }
