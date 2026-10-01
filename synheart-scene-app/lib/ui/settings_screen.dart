@@ -361,7 +361,10 @@ class _BehaviorSectionState extends State<_BehaviorSection> with WidgetsBindingO
               'the app that posted a notification), and motion — never content, text, senders or numbers. '
               'Collected continuously, also in the background.',
         ),
-        if (_access == true)
+        if (_access == null)
+          // Not known yet: no "Allow" until the check says access is off.
+          const SettingsRow(icon: Icons.notifications_none, title: 'Notification events', subtitle: 'Checking…')
+        else if (_access!)
           const SettingsRow(icon: Icons.notifications_active_outlined, title: 'Notification events', subtitle: 'On')
         else
           SettingsRow(
