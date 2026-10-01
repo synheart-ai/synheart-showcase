@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/state.dart';
 import 'check_in_diagnostics.dart';
@@ -57,7 +59,7 @@ enum CheckInPhase { idle, connecting, reading, done, notEnoughSignal, failed }
 /// evidence, or [checkInTimeout]. It no longer stops collection. A WearSim
 /// presentation cue publishes its seeded reading.
 class SceneStateEngine extends ChangeNotifier {
-  SceneStateEngine(this.backend, {required this.onPublish, DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
+  SceneStateEngine(this.backend, {required this.onPublish, DateTime Function()? clock, this.prefs}) : _clock = clock ?? DateTime.now {
     _subs = [
       backend.readings.listen(_onReading, onError: _onError),
       backend.heartRate.listen(_onHeartRate),
@@ -67,6 +69,43 @@ class SceneStateEngine extends ChangeNotifier {
 
   final SignalBackend backend;
   final void Function(CurrentState) onPublish;
+
+  /// Where consent and the chosen source are kept, so a restart neither asks
+  /// again nor drops the watch. Withdrawing consent clears both.
+  final SharedPreferences? prefs;
+  static const _consentKey = 'scene.consent.v1';
+  static const _sourceKey = 'scene.source.v1';
+
+  void _rememberSource(Map<String, String>? s) => s == null ? prefs?.remove(_sourceKey) : prefs?.setString(_sourceKey, jsonEncode(s));
+
+  /// At launch: if consent was given before, give it to the runtime again
+  /// and reconnect the last source (not a WearSim link — those expire).
+  /// Failures are logged and leave Settings to show what is needed.
+  Future<void> restore() async {
+    if (prefs?.getBool(_consentKey) != true) return;
+    CheckInDiagnostics.log('restoring consent and the last source');
+    try {
+      await consent();
+    } catch (e) {
+      CheckInDiagnostics.log('restore: consent failed: ${_describe(e)}');
+      return;
+    }
+    final raw = prefs?.getString(_sourceKey);
+    if (raw == null) return;
+    try {
+      final m = (jsonDecode(raw) as Map).cast<String, String>();
+      switch (m['source']) {
+        case 'watch':
+          await connectWatch();
+        case 'platformHealth':
+          await connectPlatformHealth();
+        case 'bluetooth':
+          await connectBluetooth(WearableDevice(m['id']!, m['name'] ?? 'Heart-rate monitor'));
+      }
+    } catch (e) {
+      CheckInDiagnostics.log('restore: reconnect failed: ${_describe(e)}');
+    }
+  }
   final DateTime Function() _clock;
   late final List<StreamSubscription<Object?>> _subs;
 
@@ -165,6 +204,7 @@ class SceneStateEngine extends ChangeNotifier {
       await backend.start();
       _consented = true;
     });
+    prefs?.setBool(_consentKey, true);
     // Keep collecting in the background. A refused permission or a blocked
     // service start leaves foreground collection working, and says why.
     try {
@@ -187,11 +227,16 @@ class SceneStateEngine extends ChangeNotifier {
     } catch (_) {}
     await backend.stop();
     _consented = false;
+    prefs?.remove(_consentKey);
+    _rememberSource(null);
     _clearSource();
     notifyListeners();
   }
 
-  Future<void> connectPlatformHealth() => _connect(WearableSource.platformHealth, backend.connectPlatformHealth);
+  Future<void> connectPlatformHealth() async {
+    await _connect(WearableSource.platformHealth, backend.connectPlatformHealth);
+    _rememberSource({'source': 'platformHealth'});
+  }
 
   Future<List<WearableDevice>> scanBluetooth() async {
     _error = null;
@@ -205,8 +250,10 @@ class SceneStateEngine extends ChangeNotifier {
     }
   }
 
-  Future<void> connectBluetooth(WearableDevice d) =>
-      _connect(WearableSource.bluetooth, () => backend.connectBluetooth(d), name: d.name);
+  Future<void> connectBluetooth(WearableDevice d) async {
+    await _connect(WearableSource.bluetooth, () => backend.connectBluetooth(d), name: d.name);
+    _rememberSource({'source': 'bluetooth', 'id': d.id, 'name': d.name});
+  }
 
   /// The Scene Galaxy Watch app (Wear OS), streaming heart rate.
   Future<void> connectWatch() async {
@@ -214,6 +261,7 @@ class SceneStateEngine extends ChangeNotifier {
     await _connect(WearableSource.watch, () async => name = await backend.connectWatch());
     _sourceName = name;
     _chosen = (source: WearableSource.watch, name: name, connect: () async => _sourceName = await backend.connectWatch());
+    _rememberSource({'source': 'watch'});
     notifyListeners();
   }
 
@@ -221,6 +269,7 @@ class SceneStateEngine extends ChangeNotifier {
   Future<void> pairWearSim(Uri link) async {
     final endpoint = wearSimEndpoint(link, now: _clock());
     await _connect(WearableSource.wearSim, () => backend.connectWearSim(endpoint));
+    _rememberSource(null); // a pairing link expires: not restored
   }
 
   /// Validates a WearSim pairing link and returns its WebSocket endpoint.
@@ -245,6 +294,7 @@ class SceneStateEngine extends ChangeNotifier {
     await backend.disconnectSource();
     _clearSource();
     _chosen = null;
+    _rememberSource(null);
     notifyListeners();
   }
 

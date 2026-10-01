@@ -1,5 +1,6 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:scene/app/signals.dart';
 import 'package:scene/app/state_engine.dart';
 import 'package:scene/domain/state.dart';
@@ -377,5 +378,65 @@ void main() {
     await expectLater(engine.consent(), throwsStateError);
     expect(engine.consented, isFalse);
     expect(engine.error, contains('runtime missing'));
+  });
+
+  group('consent and the source survive a restart', () {
+    Future<SharedPreferences> prefs() async {
+      SharedPreferences.setMockInitialValues({});
+      return SharedPreferences.getInstance();
+    }
+
+    test('agreed once and the watch connected: a new engine restores both', () async {
+      final p = await prefs();
+      final first = SceneStateEngine(fake, onPublish: published.add, clock: () => now, prefs: p);
+      await first.consent();
+      await first.connectWatch();
+
+      final again = FakeSignals();
+      final second = SceneStateEngine(again, onPublish: published.add, clock: () => now, prefs: p);
+      expect(second.consented, isFalse);
+      await second.restore();
+      expect(second.consented, isTrue);
+      expect(again.calls, containsAllInOrder(['start', 'background:on', 'watch']));
+      expect(second.source, WearableSource.watch);
+    });
+
+    test('a Bluetooth strap is reconnected by its id', () async {
+      final p = await prefs();
+      final first = SceneStateEngine(fake, onPublish: published.add, clock: () => now, prefs: p);
+      await first.consent();
+      await first.connectBluetooth(const WearableDevice('hrm-1', 'Polar H10'));
+      final again = FakeSignals();
+      final second = SceneStateEngine(again, onPublish: published.add, clock: () => now, prefs: p);
+      await second.restore();
+      expect(again.calls, contains('ble:hrm-1'));
+      expect(second.chosenName, 'Polar H10');
+    });
+
+    test('withdrawing consent clears both: nothing is restored', () async {
+      final p = await prefs();
+      final first = SceneStateEngine(fake, onPublish: published.add, clock: () => now, prefs: p);
+      await first.consent();
+      await first.connectWatch();
+      await first.withdraw();
+      final again = FakeSignals();
+      final second = SceneStateEngine(again, onPublish: published.add, clock: () => now, prefs: p);
+      await second.restore();
+      expect(second.consented, isFalse);
+      expect(again.calls, isEmpty);
+    });
+
+    test('a disconnected source is not reconnected, but consent is kept', () async {
+      final p = await prefs();
+      final first = SceneStateEngine(fake, onPublish: published.add, clock: () => now, prefs: p);
+      await first.consent();
+      await first.connectWatch();
+      await first.disconnectSource();
+      final again = FakeSignals();
+      final second = SceneStateEngine(again, onPublish: published.add, clock: () => now, prefs: p);
+      await second.restore();
+      expect(second.consented, isTrue);
+      expect(again.calls, isNot(contains('watch')));
+    });
   });
 }

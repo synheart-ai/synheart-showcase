@@ -48,7 +48,7 @@ class SceneApp extends StatefulWidget {
 class _SceneAppState extends State<SceneApp> {
   late final GoRouter _router = buildRouter();
   late final SceneCubit _cubit = SceneCubit(prefs: widget.prefs, clock: widget.clock);
-  late final SceneStateEngine _engine = SceneStateEngine(widget.signals, onPublish: _cubit.setCurrentState, clock: widget.clock);
+  late final SceneStateEngine _engine = SceneStateEngine(widget.signals, onPublish: _cubit.setCurrentState, clock: widget.clock, prefs: widget.prefs);
   late final MovieInfoStore _movies = widget.movieInfo ?? MovieInfoStore(prefs: widget.prefs);
   StreamSubscription<Uri>? _links;
 
@@ -58,6 +58,8 @@ class _SceneAppState extends State<SceneApp> {
     _links = widget.links?.listen(_onLink);
     // Fetches only what is not cached; a no-op without a TMDB token.
     unawaited(_movies.refresh(allFilms));
+    // Consent and the source survive a restart (they were asked once).
+    unawaited(_engine.restore());
   }
 
   /// A WearSim pairing link pairs at once if consent was given; otherwise it
