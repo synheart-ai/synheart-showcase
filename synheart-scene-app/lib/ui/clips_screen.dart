@@ -84,12 +84,15 @@ class _Clip extends StatelessWidget {
           right: 12,
           bottom: 210,
           child: Column(children: [
-            _Side(child: MyListButton(film: f, compact: true)),
+            _Side(child: MyListButton(film: f, iconOnly: true)),
             const SizedBox(height: 14),
             _Side(
-              child: TextButton(
+              child: IconButton(
+                tooltip: 'About ${f.title}',
+                iconSize: 32,
+                style: IconButton.styleFrom(minimumSize: const Size(56, 56)),
                 onPressed: () => openTitle(context, f, 'clips-info'),
-                child: const Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.info_outline, size: 26), SizedBox(height: 4), Text('Info')]),
+                icon: const Icon(Icons.info_outline, color: SceneColors.ink),
               ),
             ),
           ]),
@@ -143,7 +146,9 @@ class _Side extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         width: 64,
-        decoration: const BoxDecoration(color: Color(0x66000000), borderRadius: BorderRadius.all(Radius.circular(32))),
+        height: 64,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(color: Color(0x66000000), shape: BoxShape.circle),
         child: child,
       );
 }

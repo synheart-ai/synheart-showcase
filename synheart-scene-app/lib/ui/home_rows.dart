@@ -31,15 +31,27 @@ void playTrailer(BuildContext context, Film f, Uri trailer, String from) {
 
 /// "+ My List" / "✓ My List".
 class MyListButton extends StatelessWidget {
-  const MyListButton({super.key, required this.film, this.compact = false});
+  const MyListButton({super.key, required this.film, this.compact = false, this.iconOnly = false});
   final Film film;
   final bool compact;
+
+  /// Just the + / ✓, as on a short-video feed (label for screen readers).
+  final bool iconOnly;
 
   @override
   Widget build(BuildContext context) {
     final on = context.select((SceneCubit c) => c.state.myList.contains(film.id));
     final icon = Icon(on ? Icons.check : Icons.add, size: 26);
     void tap() => context.read<SceneCubit>().toggleMyList(film.id);
+    if (iconOnly) {
+      return IconButton(
+        tooltip: on ? 'Remove from My List' : 'Add to My List',
+        iconSize: 34,
+        style: IconButton.styleFrom(minimumSize: const Size(56, 56)),
+        onPressed: tap,
+        icon: Icon(on ? Icons.check : Icons.add, color: SceneColors.ink),
+      );
+    }
     if (compact) {
       return TextButton(
         onPressed: tap,
