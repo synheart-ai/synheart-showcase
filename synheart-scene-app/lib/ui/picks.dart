@@ -1,4 +1,5 @@
 import '../app/scene_cubit.dart';
+import '../data/catalogue.dart';
 import '../domain/state.dart';
 import '../engine/explain.dart';
 import '../engine/recommender.dart';
@@ -46,14 +47,14 @@ class Picks {
     );
   }
 
-  /// One film scored the same way the list scored it.
+  /// One film scored the same way the list scored it — any catalogue film,
+  /// including the ones rated during onboarding (My Scene's "Movies You've
+  /// Loved" open their title pages too).
   Recommendation? score(String filmId) {
     final p = s.profile;
-    if (p == null) return null;
-    for (final f in _engine.pool) {
-      if (f.id == filmId) return _engine.score(f, p, state: withState ? state : null, context: s.viewing, mode: mode);
-    }
-    return null;
+    final f = filmById(filmId);
+    if (p == null || f == null) return null;
+    return _engine.score(f, p, state: withState ? state : null, context: s.viewing, mode: mode);
   }
 
   Comparison? compare() {

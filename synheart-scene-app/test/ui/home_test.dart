@@ -137,6 +137,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel(RegExp(r'^Se7en, ')), findsOneWidget);
     expect(find.text("Movies You've Loved"), findsOneWidget);
+    // A film rated during onboarding opens its title page too.
+    await tester.tap(find.bySemanticsLabel(RegExp(r'^The Dark Knight, ')).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Why this movie?'), findsOneWidget);
+    expect(find.textContaining('not in tonight'), findsNothing);
   });
 
   testWidgets('"Wrong for me" hides a film from Home', (tester) async {

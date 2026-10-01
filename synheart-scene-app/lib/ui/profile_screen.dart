@@ -209,6 +209,18 @@ class _Preferences extends StatelessWidget {
   }
 }
 
+/// A film that stands for a genre on its tile: the first catalogue film
+/// whose first genre it is, else any film with it.
+Film? genreFace(Genre g) {
+  for (final f in candidateFilms) {
+    if (f.genres.first == g) return f;
+  }
+  for (final f in allFilms) {
+    if (f.genres.contains(g)) return f;
+  }
+  return null;
+}
+
 /// Favourite genres as poster tiles (a red border and check when picked) and
 /// Familiar ↔ Surprise me — used in onboarding and when editing the
 /// baseline.
@@ -220,17 +232,6 @@ class PreferenceControls extends StatelessWidget {
     Genre.action, Genre.adventure, Genre.romance, Genre.horror, Genre.animation, Genre.documentary,
   ];
 
-  /// A film that stands for the genre on its tile: the first catalogue film
-  /// whose first genre it is, else any film with it.
-  static Film? _face(Genre g) {
-    for (final f in candidateFilms) {
-      if (f.genres.first == g) return f;
-    }
-    for (final f in allFilms) {
-      if (f.genres.contains(g)) return f;
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +250,7 @@ class PreferenceControls extends StatelessWidget {
         LayoutBuilder(builder: (context, c) {
           final w = (c.maxWidth - 16) / 3;
           return Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final g in _pickable) _GenreTile(genre: g, film: _face(g), width: w, selected: answers.preferredGenres.contains(g), onTap: () => cubit.toggleGenre(g)),
+            for (final g in _pickable) _GenreTile(genre: g, film: genreFace(g), width: w, selected: answers.preferredGenres.contains(g), onTap: () => cubit.toggleGenre(g)),
           ]);
         }),
         const SizedBox(height: 32),
