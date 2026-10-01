@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../app/scene_cubit.dart';
 import '../domain/film.dart';
 import '../domain/taste.dart';
+import '../engine/taste_builder.dart';
 import 'nav_bar.dart';
 import 'poster.dart';
 import 'profile_screen.dart';
@@ -32,7 +33,9 @@ class DnaScreen extends StatelessWidget {
       );
     }
 
-    final genres = profile.rankedGenres.take(7).toList();
+    // Only genres the answers lifted above neutral (picked, or rated well);
+    // the rest all sit at the same 40 % and would only fill slots.
+    final genres = profile.rankedGenres.where((e) => e.value > neutralGenreAffinity + 1e-9).take(7).toList();
     final answers = context.select((SceneCubit c) => c.state.answers);
     return Scaffold(
       appBar: AppBar(actions: [
@@ -74,7 +77,12 @@ class DnaScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Text(_inputs(answers), style: t.bodySmall),
           const SizedBox(height: 22),
-          if (genres.isNotEmpty) ...[
+          if (genres.isEmpty) ...[
+            Text('Your top genres', style: t.titleLarge),
+            const SizedBox(height: 6),
+            Text('None yet — rate a few films or pick genres with Edit, and your favourites show here.',
+                style: t.bodyMedium?.copyWith(color: SceneColors.sage)),
+          ] else ...[
             Text('Your top genres', style: t.titleLarge),
             const SizedBox(height: 10),
             _GenreTile(genre: genres.first.key, value: genres.first.value, wide: true),

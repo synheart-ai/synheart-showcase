@@ -17,6 +17,10 @@ double _clamp01(double v) => v < 0 ? 0 : (v > 1 ? 1 : v);
 ///   of the films the user loved or liked.
 /// * **Dark tones** — the share of positive votes that went to dark, tense or
 ///   heavy films.
+/// A genre's affinity with no evidence either way: not picked, no rated
+/// film. Movie DNA shows only genres above it.
+const neutralGenreAffinity = 0.4;
+
 TasteProfile buildTasteProfile(TasteAnswers answers, {List<Film> films = onboardingFilms}) {
   final byId = {for (final f in films) f.id: f};
   final genreVotes = <Genre, List<double>>{};
@@ -47,7 +51,7 @@ TasteProfile buildTasteProfile(TasteAnswers answers, {List<Film> films = onboard
   final genreAffinity = <Genre, double>{};
   for (final g in Genre.values) {
     final picked = answers.preferredGenres.contains(g);
-    final prior = picked ? 0.55 : 0.4;
+    final prior = picked ? 0.55 : neutralGenreAffinity;
     final votes = genreVotes[g] ?? const [];
     var affinity = prior;
     if (votes.isNotEmpty) {
