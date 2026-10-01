@@ -133,13 +133,11 @@ class StateCard extends StatelessWidget {
   }
 }
 
-/// The tint of a suggestion — the same colours as Home's state banner.
-List<Color> suggestionTint(Experience? e) => switch (e) {
-  Experience.unwind => const [Color(0xFF1E4D3A), Color(0xFF0E241B)],
-  Experience.easyWatch => const [Color(0xFF4B2A6B), Color(0xFF221432)],
-  Experience.stayEngaged => const [Color(0xFF173E6B), Color(0xFF0B1D33)],
-  null => const [Color(0xFF3A3A3A), Color(0xFF1A1A1A)],
-};
+/// The tint of a suggestion, in the theme's own colours: a deep red to
+/// black for any suggestion (its name says which), charcoal for Balanced.
+/// Shared by Home's state banner, the state card and the sheet.
+List<Color> suggestionTint(Experience? e) =>
+    e == null ? const [Color(0xFF3A3A3A), Color(0xFF1A1A1A)] : const [Color(0xFF6B0F16), Color(0xFF1A0507)];
 
 /// One plain signal: its name and level, a three-step meter, and either a
 /// "low confidence" note or why it is not available.
@@ -165,21 +163,14 @@ class _SignalTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(signal.label, style: t.titleSmall?.copyWith(color: available ? SceneColors.ink : SceneColors.sage)),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  available ? signal.levelLabel(level) : 'Not available',
-                  textAlign: TextAlign.end,
-                  style: available ? t.titleSmall?.copyWith(fontWeight: FontWeight.w800) : t.bodySmall,
-                ),
-              ),
-            ],
+          // The name small and grey, the level large: nothing wraps mid-word.
+          Text(signal.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodySmall?.copyWith(letterSpacing: 0.3)),
+          const SizedBox(height: 2),
+          Text(
+            available ? signal.levelLabel(level) : 'Not available',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: available ? t.titleLarge?.copyWith(fontWeight: FontWeight.w800) : t.titleSmall?.copyWith(color: SceneColors.sage),
           ),
           const SizedBox(height: 10),
           Row(

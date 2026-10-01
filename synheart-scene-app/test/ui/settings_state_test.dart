@@ -160,7 +160,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('DEMO DATA — NOT A REAL READING'), findsOneWidget);
     for (final (label, level) in [('Energy', 'Moderate'), ('Mental load', 'High'), ('Engagement', 'Moderate')]) {
-      final row = find.ancestor(of: find.text(label), matching: find.byType(Row)).first;
+      final row = find.ancestor(of: find.text(label), matching: find.byType(Column)).first; // the signal tile
       expect(find.descendant(of: row, matching: find.text(level)), findsOneWidget, reason: label);
     }
     expect(find.text('Unwind'), findsOneWidget);
