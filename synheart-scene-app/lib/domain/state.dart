@@ -407,9 +407,11 @@ class CurrentState extends Equatable {
   /// state-based label and suggestion is marked as such.
   bool get isLowConfidence => availableAxes.any((a) => reading(a)!.isLowConfidence);
 
-  /// At least one axis is usable. Without that, Scene says there is not
-  /// enough evidence and ranks on taste only.
-  bool get hasEvidence => availableAxes.isNotEmpty;
+  /// At least one axis that may drive the picks is usable ([drivers]).
+  /// Without that, Scene says there is not enough evidence and ranks on taste
+  /// only. Seen on device 2026-10-01: a reading holding only interaction
+  /// mode (shown, never ranked) was published as a usable state.
+  bool get hasEvidence => drivers.availableAxes.isNotEmpty;
 
   /// Resona's policy, adapted: ease first, then clarity, then flow. Null
   /// means no clear need — a real result, not a failure. The behavior axes

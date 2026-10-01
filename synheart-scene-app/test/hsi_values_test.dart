@@ -167,6 +167,14 @@ void main() {
     });
   });
 
+  test('a reading with only shown-only axes is not evidence (seen on device)', () {
+    const onlyMode = CurrentState(interactionMode: AxisReading(0.53, 0.5), source: StateSource.synheart);
+    const onlyLowBehavior = CurrentState(valence: AxisReading(0.5, 0.05), source: StateSource.synheart);
+    expect(onlyMode.hasEvidence, isFalse);
+    expect(onlyLowBehavior.hasEvidence, isFalse);
+    expect(const CurrentState(focus: AxisReading(0.2, 0.36), source: StateSource.synheart).hasEvidence, isTrue);
+  });
+
   group('behavior axes drive the picks only at confidence 0.45 or more', () {
     test('seen on device: a low-confidence behavior axis shows, but suggests nothing', () {
       const s = CurrentState(mentalFatigue: AxisReading(0.94, 0.09), source: StateSource.synheart);
