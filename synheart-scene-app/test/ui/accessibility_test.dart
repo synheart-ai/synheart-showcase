@@ -18,6 +18,8 @@ void main() {
   }
 
   Future<void> toTonight(WidgetTester tester) async {
+    await tester.ensureVisible(find.text('Try the demo profile')); // Welcome scrolls at large text sizes
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Try the demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
