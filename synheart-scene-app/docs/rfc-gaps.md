@@ -32,7 +32,7 @@ Checked 2026-09-28 against [`rfc.md`](rfc.md). The first build followed the demo
 | Decision | Current assumption |
 |---|---|
 | Platform / framework | Flutter, iOS + Android |
-| SDK interaction and outputs | `synheart_core` 0.15.0 HSI axes (focus, stress, arousal, capacity) with confidence, from wearable sources; see [state-mapping.md](state-mapping.md) |
+| SDK interaction and outputs | `synheart_core` 0.16.0 HSI axes (focus, stress, arousal, capacity) with confidence, from wearable sources; see [state-mapping.md](state-mapping.md) |
 | Real SDK results, seeded data, or both | Both; seeded ones are labelled **Demo data** everywhere they appear |
 | Processing, storage, retention | HSI is computed on device, with cloud upload off. Answers, the latest reading and the TMDB film-data cache are kept in app storage until **Reset demo** (the cache survives it). Raw samples are never stored |
 | Tagging and media rights owner | **Open.** Tags are my curation. Posters, synopses and trailers come from TMDB (attribution + official logo shown; licence for external demos unconfirmed); typographic posters without a token |

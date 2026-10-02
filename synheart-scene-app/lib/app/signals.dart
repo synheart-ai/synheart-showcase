@@ -163,7 +163,11 @@ class SynheartSignals implements SignalBackend {
         category: 'Entertainment',
         developer: 'Synheart AI',
         allowUnsignedCapabilities: true,
-        wearConfig: const WearConfig(enableHighFrequencyHrv: true),
+        // Do not start the platform-health reader on consent: the watch and
+        // the strap are pushed directly, and Health Connect starts only when
+        // chosen (startWearCollection). Otherwise the Health Connect dialog
+        // and a history read came with every launch (synheart_core 0.16.0).
+        wearConfig: const WearConfig(enableHighFrequencyHrv: true, autoStartPlatformHealth: false),
         // Behavior signals (2026-09-30): taps, scrolls and swipes in Scene,
         // plus motion (raw accelerometer into the runtime). Typing is not
         // collected. App switches, notification and call events come from
