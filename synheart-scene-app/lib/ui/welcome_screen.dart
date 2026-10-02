@@ -91,16 +91,19 @@ class WelcomeScreen extends StatelessWidget {
                                   child: const Text('Reset demo'),
                                 ),
                               ] else ...[
-                                FilledButton(style: red, onPressed: () => context.push(Routes.profile), child: const Text('Build my movie profile')),
-                                const SizedBox(height: 10),
-                                OutlinedButton(
-                                  style: ghost,
+                                // Start on the demo profile; building your own comes after.
+                                FilledButton(
+                                  style: red,
                                   onPressed: () {
                                     context.read<SceneCubit>().useAnswers(demoPersonaAnswers);
                                     context.push(Routes.dna);
                                   },
-                                  child: const Text('Try the demo profile'),
+                                  child: const Text('Start with a demo profile'),
                                 ),
+                                const SizedBox(height: 10),
+                                OutlinedButton(style: ghost, onPressed: () => context.push(Routes.profile), child: const Text('Build my movie profile')),
+                                const SizedBox(height: 6),
+                                Text('You can build your own any time, for better recommendations.', textAlign: TextAlign.center, style: t.bodySmall),
                                 const SizedBox(height: 14),
                               ],
                               Row(

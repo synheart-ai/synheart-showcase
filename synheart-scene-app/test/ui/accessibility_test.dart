@@ -18,9 +18,9 @@ void main() {
   }
 
   Future<void> toTonight(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Try the demo profile')); // Welcome scrolls at large text sizes
+    await tester.ensureVisible(find.text('Start with a demo profile')); // Welcome scrolls at large text sizes
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
@@ -36,7 +36,7 @@ void main() {
 
   testWidgets('onboarding has a back path; Home is the root; a title page goes back to Home', (tester) async {
     await start(tester);
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     expect(find.text('Your Movie DNA'), findsOneWidget);
     await tester.pageBack(); // → Welcome
@@ -58,7 +58,7 @@ void main() {
     final handle = tester.ensureSemantics();
     await start(tester);
     await expectGuidelines(tester);
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();

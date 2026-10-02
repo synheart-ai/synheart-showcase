@@ -43,7 +43,7 @@ void main() {
 
     await tester.pumpWidget(SceneApp(signals: FakeSignals(), movieInfo: movies));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();

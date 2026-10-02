@@ -18,7 +18,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(SceneApp(signals: FakeSignals(), clock: clock));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
@@ -172,6 +172,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('#1 FOR YOU RIGHT NOW'), findsOneWidget);
     expect(find.text('Glass Onion'), findsWidgets);
+  });
+
+  testWidgets('starts on the demo profile and invites building your own', (tester) async {
+    await toHome(tester);
+    expect(find.text("You're on a demo profile"), findsOneWidget);
+    expect(find.text('Build your profile for better recommendations.'), findsOneWidget);
+    await tester.tap(find.text('My Scene'));
+    await tester.pumpAndSettle();
+    expect(find.text('Demo profile'), findsOneWidget);
+    await tester.tap(find.text('Build').first);
+    await tester.pumpAndSettle();
+    expect(find.text('1 of 16'), findsOneWidget, reason: 'the questions start from blank answers');
+    await tester.tap(find.text('Skip the rest'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Comedy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('See my Movie DNA'));
+    await tester.pumpAndSettle();
+    expect(find.text('YOUR BASELINE'), findsOneWidget);
+    expect(find.text("You're on a demo profile"), findsNothing);
   });
 
   test('taste rows follow the top genres and skip what is already on the list', () {

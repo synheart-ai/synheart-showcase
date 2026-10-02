@@ -21,7 +21,7 @@ void main() {
     fake = FakeSignals();
     await tester.pumpWidget(SceneApp(signals: fake));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Skip — see tonight's picks"));
     await tester.pumpAndSettle();
@@ -64,7 +64,7 @@ void main() {
     }
 
     await opensSettings(); // Welcome, before any profile or consent
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await opensSettings(); // Movie DNA
     await tester.tap(find.text("Skip — see tonight's picks"));

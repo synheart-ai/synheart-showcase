@@ -143,3 +143,40 @@ class _LogOnShowState extends State<LogOnShow> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
+
+/// While Scene runs on the demo profile: the invitation to build your own,
+/// for better recommendations.
+class BuildProfileCard extends StatelessWidget {
+  const BuildProfileCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!context.select((SceneCubit c) => c.state.demoProfile)) return const SizedBox.shrink();
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF1A0507),
+        border: Border.all(color: SceneColors.red.withValues(alpha: 0.6)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.person_add_alt_1_outlined, color: SceneColors.accent),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text("You're on a demo profile", style: t.titleSmall),
+            Text('Build your profile for better recommendations.', style: t.bodySmall),
+          ]),
+        ),
+        TextButton(
+          onPressed: () {
+            context.read<SceneCubit>().startOwnProfile();
+            context.push(Routes.profile);
+          },
+          child: const Text('Build'),
+        ),
+      ]),
+    );
+  }
+}

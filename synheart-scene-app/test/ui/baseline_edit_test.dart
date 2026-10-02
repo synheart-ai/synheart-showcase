@@ -52,7 +52,7 @@ void main() {
 
   testWidgets('Edit keeps answers; Reset demo asks first, then clears', (tester) async {
     await pump(tester);
-    await tester.tap(find.text('Try the demo profile'));
+    await tester.tap(find.text('Start with a demo profile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
@@ -71,6 +71,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Reset'));
     await tester.pumpAndSettle();
-    expect(find.text('Try the demo profile'), findsOneWidget);
+    expect(find.text('Start with a demo profile'), findsOneWidget);
   });
 }

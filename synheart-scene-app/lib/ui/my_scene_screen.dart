@@ -35,12 +35,22 @@ class MySceneScreen extends StatelessWidget {
           onTap: () => _showProfile(context),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const SceneAvatar(size: 40),
-            const SizedBox(width: 12),
-            const Text('You', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-            const Icon(Icons.arrow_drop_down, size: 32),
-            ]),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SceneAvatar(size: 40),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    s.demoProfile ? 'Demo profile' : 'You',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, size: 32),
+              ],
+            ),
           ),
         ),
         actions: const [SettingsButton(), SizedBox(width: 4)],
@@ -50,27 +60,38 @@ class MySceneScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           children: [
+            const BuildProfileCard(),
+            const SizedBox(height: 12),
             // Where a cinema app puts Downloads: your state right now.
             Material(
               color: SceneColors.card,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: SceneColors.line)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: SceneColors.line),
+              ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => showStateSheet(context),
                 child: Padding(
                   padding: const EdgeInsets.all(18),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Icon(view.icon, size: 28),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Right now: ${view.label}', style: t.titleLarge),
-                        const SizedBox(height: 6),
-                        Text(view.message, style: t.bodyLarge?.copyWith(color: SceneColors.sage)),
-                      ]),
-                    ),
-                    const Icon(Icons.chevron_right, size: 30),
-                  ]),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(view.icon, size: 28),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Right now: ${view.label}', style: t.titleLarge),
+                            const SizedBox(height: 6),
+                            Text(view.message, style: t.bodyLarge?.copyWith(color: SceneColors.sage)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, size: 30),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -92,52 +113,58 @@ class MySceneScreen extends StatelessWidget {
 /// The profile sheet: avatar and name, then Movie DNA, App Settings and
 /// Reset demo, as rows.
 Future<void> _showProfile(BuildContext context) => showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheet) {
-        final t = Theme.of(sheet).textTheme;
-        Widget row(IconData icon, String label, VoidCallback onTap) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Material(
-                color: const Color(0xFF333333),
-                borderRadius: BorderRadius.circular(12),
-                child: ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  leading: Icon(icon, size: 28),
-                  title: Text(label, style: t.titleMedium?.copyWith(fontSize: 18)),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: onTap,
-                ),
-              ),
-            );
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('Profile', style: t.headlineSmall),
-              const SizedBox(height: 18),
-              const SceneAvatar(size: 96),
-              const SizedBox(height: 10),
-              Text('You', style: t.titleLarge),
-              const SizedBox(height: 24),
-              row(Icons.person_outline, 'Movie DNA', () {
-                Navigator.pop(sheet);
-                context.push(Routes.dna);
-              }),
-              row(Icons.settings_outlined, 'App Settings', () {
-                Navigator.pop(sheet);
-                context.push(Routes.settings);
-              }),
-              row(Icons.restart_alt, 'Reset demo', () {
-                Navigator.pop(sheet);
-                confirmReset(context, onReset: () {
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  builder: (sheet) {
+    final t = Theme.of(sheet).textTheme;
+    Widget row(IconData icon, String label, VoidCallback onTap) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: const Color(0xFF333333),
+        borderRadius: BorderRadius.circular(12),
+        child: ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          leading: Icon(icon, size: 28),
+          title: Text(label, style: t.titleMedium?.copyWith(fontSize: 18)),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: onTap,
+        ),
+      ),
+    );
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Profile', style: t.headlineSmall),
+            const SizedBox(height: 18),
+            const SceneAvatar(size: 96),
+            const SizedBox(height: 10),
+            Text('You', style: t.titleLarge),
+            const SizedBox(height: 24),
+            row(Icons.person_outline, 'Movie DNA', () {
+              Navigator.pop(sheet);
+              context.push(Routes.dna);
+            }),
+            row(Icons.settings_outlined, 'App Settings', () {
+              Navigator.pop(sheet);
+              context.push(Routes.settings);
+            }),
+            row(Icons.restart_alt, 'Reset demo', () {
+              Navigator.pop(sheet);
+              confirmReset(
+                context,
+                onReset: () {
                   context.read<SceneCubit>().reset();
                   context.go(Routes.welcome);
-                });
-              }),
-            ]),
-          ),
-        );
-      },
+                },
+              );
+            }),
+          ],
+        ),
+      ),
     );
+  },
+);

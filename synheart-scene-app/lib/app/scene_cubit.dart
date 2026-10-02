@@ -37,6 +37,7 @@ class SceneState extends Equatable {
     this.viewing = const ViewingContext(),
     this.feedback = const {},
     this.myList = const {},
+    this.demoProfile = false,
   });
 
   final TasteAnswers answers;
@@ -53,6 +54,10 @@ class SceneState extends Equatable {
 
   /// Films saved with "+ My List", newest first.
   final Set<String> myList;
+
+  /// The profile is the demo persona's, not the user's own: Scene starts
+  /// there and invites building a real one for better recommendations.
+  final bool demoProfile;
 
   bool get hasProfile => profile != null;
 
@@ -71,6 +76,7 @@ class SceneState extends Equatable {
     ViewingContext? viewing,
     Map<String, (Feedback, Set<String>)>? feedback,
     Set<String>? myList,
+    bool? demoProfile,
   }) =>
       SceneState(
         answers: answers ?? this.answers,
@@ -79,10 +85,11 @@ class SceneState extends Equatable {
         viewing: viewing ?? this.viewing,
         feedback: feedback ?? this.feedback,
         myList: myList ?? this.myList,
+        demoProfile: demoProfile ?? this.demoProfile,
       );
 
   @override
-  List<Object?> get props => [answers, profile, current, viewing, feedback, myList];
+  List<Object?> get props => [answers, profile, current, viewing, feedback, myList, demoProfile];
 }
 
 /// The app's single source of truth.
@@ -148,7 +155,8 @@ class SceneCubit extends Cubit<SceneState> {
         preferredGenres: {for (final g in m['genres'] as List) Genre.values.byName(g as String)},
         discovery: (m['discovery'] as num).toDouble(),
       );
-      emit(state.copyWith(answers: answers, profile: m['complete'] == true ? buildTasteProfile(answers) : null));
+      emit(state.copyWith(
+          answers: answers, profile: m['complete'] == true ? buildTasteProfile(answers) : null, demoProfile: m['demo'] == true));
     } catch (_) {
       // A stored profile from an older build is simply ignored.
     }
@@ -182,6 +190,7 @@ class SceneCubit extends Cubit<SceneState> {
         'genres': [for (final g in a.preferredGenres) g.name],
         'discovery': a.discovery,
         'complete': state.hasProfile,
+        'demo': state.demoProfile,
       }),
     );
   }
@@ -189,7 +198,8 @@ class SceneCubit extends Cubit<SceneState> {
   /// Once a profile exists, every edit rebuilds it, so the rankings follow
   /// the user's edits straight away (RFC §9.2).
   void _answersChanged(TasteAnswers answers) {
-    emit(state.copyWith(answers: answers, profile: state.hasProfile ? buildTasteProfile(answers) : null));
+    // An edit makes the profile the user's own, even if it began as the demo.
+    emit(state.copyWith(answers: answers, profile: state.hasProfile ? buildTasteProfile(answers) : null, demoProfile: false));
     _persist();
   }
 
@@ -210,7 +220,7 @@ class SceneCubit extends Cubit<SceneState> {
 
   /// Onboarding done: derive the Movie DNA.
   void completeProfile() {
-    emit(state.copyWith(profile: buildTasteProfile(state.answers)));
+    emit(state.copyWith(profile: buildTasteProfile(state.answers), demoProfile: false));
     _persist();
     log.record(DemoEvent.onboardingCompleted, {
       'rated': '${state.answers.answeredCount}',
@@ -219,8 +229,15 @@ class SceneCubit extends Cubit<SceneState> {
   }
 
   /// "Try the demo profile" — fills onboarding with the plan's persona.
+  /// "Build my profile": start the questions from blank answers. The demo
+  /// profile stays in use until the new one is complete.
+  void startOwnProfile() {
+    if (!state.demoProfile) return;
+    emit(state.copyWith(answers: const TasteAnswers()));
+  }
+
   void useAnswers(TasteAnswers answers) {
-    emit(state.copyWith(answers: answers, profile: buildTasteProfile(answers)));
+    emit(state.copyWith(answers: answers, profile: buildTasteProfile(answers), demoProfile: true));
     _persist();
     log.record(DemoEvent.onboardingCompleted, {'profile': 'demo'});
   }
