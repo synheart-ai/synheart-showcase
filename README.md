@@ -51,13 +51,28 @@ Resona demonstrates:
 
 See the [Resona guide](resona/README.md) for architecture, setup, wearable support, and development instructions.
 
+### [Scene](synheart-scene-app) — *The right movie for right now*
+
+Scene is a cinema-recommendation demo built with Flutter and Synheart. If Resona is a state-aware Spotify, Scene is a state-aware Netflix: it first learns what a person likes to watch, then combines that taste baseline with their current state to answer *"What should I watch right now?"*
+
+Scene demonstrates:
+
+- A taste baseline first (film ratings, genres, Familiar ↔ Surprise me), so Synheart never guesses taste
+- A consented, short Synheart check-in that collects only while it runs
+- Galaxy Watch (Wear OS companion app), Bluetooth heart-rate monitor, Apple Health / Health Connect and WearSim sources
+- A *Based on taste* ⇄ *Taste + current state* toggle, with each film's movement and a three-part *Why this movie?*
+- Plain, non-clinical state language, and an honest "no meaningful change" when the state does not change the list
+
+See the [Scene guide](synheart-scene-app/README.md) for setup, the state mapping and the demo script.
+
 *More showcases are on the way. If you build something on HSI, we would like to see it.*
 
 ## Repository structure
 
 ```text
 synheart-showcase/
-└── resona/    Flutter adaptive-music showcase
+├── resona/               Flutter adaptive-music showcase
+└── synheart-scene-app/   Flutter state-aware cinema showcase
 ```
 
 Each showcase is self-contained and has its own dependencies and setup guide. Proprietary Synheart Runtime binaries are not stored in this repository; authorized developers install the required artifacts with the Synheart CLI.
