@@ -9,7 +9,7 @@
     "types": "wrangler types"
   },
   "devDependencies": {
-    "typescript": "5.9.2",
-    "wrangler": "^4.165.0"
+    "typescript": "5.9.3",
+    "wrangler": "^4.167.0"
   }
 }
