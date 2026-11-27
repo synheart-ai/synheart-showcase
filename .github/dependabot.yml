@@ -1,0 +1,41 @@
+version: 2
+
+multi-ecosystem-groups:
+  dependency-updates:
+    schedule:
+      interval: weekly
+      day: saturday
+      time: "10:00"
+      timezone: Africa/Addis_Ababa
+
+updates:
+  - package-ecosystem: pub
+    directories:
+      - "/resona"
+      - "/synheart-scene-app"
+    patterns: ["*"]
+    multi-ecosystem-group: dependency-updates
+    ignore:
+      # Keep major upgrades separate for manual review.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: gradle
+    directories:
+      - "/resona/android"
+      - "/synheart-scene-app/android"
+    patterns: ["*"]
+    multi-ecosystem-group: dependency-updates
+    ignore:
+      # Keep major upgrades separate for manual review.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: "/resona/cloudflare/media-worker"
+    patterns: ["*"]
+    multi-ecosystem-group: dependency-updates
+    ignore:
+      # Keep major upgrades separate for manual review.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
